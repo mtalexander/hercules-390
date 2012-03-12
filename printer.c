@@ -518,7 +518,7 @@ int   sockdev = 0;                     /* 1 == is socket device     */
             /* check for simple mode */
             if ( strstr(argv[iarg],":") )
             {
-                /* ':" found  ==> new mode */
+                /* ':' found  ==> new mode */
                 ptr = argv[iarg]+4;
                 while (*ptr)
                 {
@@ -549,7 +549,7 @@ int   sockdev = 0;                     /* 1 == is socket device     */
             }
             else
             {
-                /* ':" NOT found  ==> old mode */
+                /* ':' NOT found  ==> old mode */
                 ptr = argv[iarg]+4;
                 chan = 0;
                 while (*ptr)

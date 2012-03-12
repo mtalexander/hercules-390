@@ -416,6 +416,7 @@ CHPBLK**chpp;
 
         /* Add the new channel path block to the end of the chain */
         *chpp = chp;
+        return chp;
     }
 }
 

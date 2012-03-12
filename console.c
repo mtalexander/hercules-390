@@ -2516,7 +2516,7 @@ loc3270_hsuspend(DEVBLK *dev, void *file)
         len = 0;
     release_lock(&dev->lock);
     if (len)
-        SR_WRITE_BUF(file, SR_DEV_3270_BUF, buf, (int)len);
+        SR_WRITE_BUF(file, SR_DEV_3270_BUF, buf, len);
     return 0;
 }
 

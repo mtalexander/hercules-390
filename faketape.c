@@ -283,7 +283,7 @@ U16             curblkl;                /* Current block length      */
     /* Read the block header to obtain the current block length */
     rc = readhdr_faketape (dev, blkpos, NULL, &curblkl, unitstat,code);
     if (rc < 0) return -1; /* (error message already issued) */
-    ASSERT( curblkl >= 0 );
+    /* ASSERT( curblkl >= 0 );  curblkl is unsigned */
 
     /* Calculate the offset of the next block header */
     blkpos += sizeof(FAKETAPE_BLKHDR) + curblkl;

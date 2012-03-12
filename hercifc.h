@@ -92,16 +92,12 @@
     int    hifr_afamily;
   };
 
-#if ( defined(__APPLE__) )
   #define  hifr_name       ifreq.ifr_name
-#else
-  #define  hifr_name       ifreq.ifr_ifrn.ifrn_name
-#endif
-  #define  hifr_addr       ifreq.ifr_ifru.ifru_addr
-  #define  hifr_netmask    ifreq.ifr_ifru.ifru_netmask
-  #define  hifr_hwaddr     ifreq.ifr_ifru.ifru_hwaddr
-  #define  hifr_flags      ifreq.ifr_ifru.ifru_flags
-  #define  hifr_mtu        ifreq.ifr_ifru.ifru_mtu
+  #define  hifr_addr       ifreq.ifr_addr
+  #define  hifr_netmask    ifreq.ifr_netmask
+  #define  hifr_hwaddr     ifreq.ifr_hwaddr
+  #define  hifr_flags      ifreq.ifr_flags
+  #define  hifr_mtu        ifreq.ifr_mtu
 
 #if defined(ENABLE_IPV6)
   #define  hifr6_addr      in6_ifreq.ifr6_addr
