@@ -754,8 +754,8 @@ do { \
 #define HHC00915 "%1d:%04X CTC: incorrect number of parameters"
 #define HHC00916 "%1d:%04X CTC: option '%s' value '%s' invalid"
 #define HHC00917 "%1d:%04X CTC: default value '%s' is used for option '%s'"
-#define HHC00918 "%1d:%04X CTC: option '%s' unknown or specified incorrectly"
-#define HHC00919 "%1d:%04X CTC: option '%s' must be specified"
+#define HHC00918 "%1d:%04X CTC: option '%c' unknown or specified incorrectly"
+#define HHC00919 "%1d:%04X CTC: option '%c' must be specified"
 
 /* ctc_lcs.c */
 #define HHC00920 "%1d:%04X CTC: lcs device %04X not in configuration"

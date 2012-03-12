@@ -465,7 +465,7 @@
  gzclose((_stream))
 #else
 #define SR_DEFAULT_FILENAME "hercules.srf"
-#define SR_FILE FILE
+#define SR_FILE FILE *
 #define SR_OPEN(_path, _mode) \
  fopen((_path), (_mode))
 #define SR_READ(_ptr, _size, _nmemb, _stream) \
@@ -478,16 +478,16 @@
  fclose((_stream))
 #endif
 
-INLINE int sr_write_hdr    (FILE* file, U32  key,               U32  len);
-INLINE int sr_write_value  (FILE* file, U32  key,    U64   val, U32  len);
-INLINE int sr_write_buf    (FILE* file, U32  key,    void *buf, U64  len);
-INLINE int sr_write_string (FILE* file, U32  key,    void *str          );
+INLINE int sr_write_hdr    (SR_FILE file, U32  key,               U32  len);
+INLINE int sr_write_value  (SR_FILE file, U32  key,    U64   val, U32  len);
+INLINE int sr_write_buf    (SR_FILE file, U32  key,    void *buf, U64  len);
+INLINE int sr_write_string (SR_FILE file, U32  key,    void *str          );
 
-INLINE int sr_read_hdr     (FILE* file,              U32  *key, U32 *len);
-INLINE int sr_read_value   (FILE* file, U32 origlen, void *p,   U32  len);
-INLINE int sr_read_buf     (FILE* file,              void *p,   U64  len);
-INLINE int sr_read_string  (FILE* file,              void *p,   U32  len);
-INLINE int sr_read_skip    (FILE* file,                         U32  len);
+INLINE int sr_read_hdr     (SR_FILE file,              U32  *key, U32 *len);
+INLINE int sr_read_value   (SR_FILE file, U32 origlen, void *p,   U32  len);
+INLINE int sr_read_buf     (SR_FILE file,              void *p,   U64  len);
+INLINE int sr_read_string  (SR_FILE file,              void *p,   U32  len);
+INLINE int sr_read_skip    (SR_FILE file,                         U32  len);
 
 INLINE void sr_write_error_();
 INLINE void sr_read_error_();
@@ -496,37 +496,37 @@ INLINE void sr_value_error_();
 INLINE void sr_string_error_();
 
 #define SR_WRITE_HDR(        _file,        _key,        _len) \
-do {if (sr_write_hdr((FILE*)(_file), (U32)(_key), (U32)(_len)) != 0) return -1; } while (0)
+do {if (sr_write_hdr((SR_FILE)(_file), (U32)(_key), (U32)(_len)) != 0) return -1; } while (0)
 
 #define SR_WRITE_STRING(        _file,        _key,          _str) \
-do {if (sr_write_string((FILE*)(_file), (U32)(_key), (void*)(_str)) != 0) return -1; } while (0)
+do {if (sr_write_string((SR_FILE)(_file), (U32)(_key), (void*)(_str)) != 0) return -1; } while (0)
 
 #define SR_WRITE_BUF(        _file,        _key,          _buf,        _len) \
-do {if (sr_write_buf((FILE*)(_file), (U32)(_key), (void*)(_buf), (U64)(_len)) != 0) return -1; } while (0)
+do {if (sr_write_buf((SR_FILE)(_file), (U32)(_key), (void*)(_buf), (U64)(_len)) != 0) return -1; } while (0)
 
 #define SR_WRITE_VALUE(        _file,        _key,        _val,        _len) \
-do {if (sr_write_value((FILE*)(_file), (U32)(_key), (U64)(_val), (U32)(_len)) != 0) return -1; } while (0)
+do {if (sr_write_value((SR_FILE)(_file), (U32)(_key), (U64)(_val), (U32)(_len)) != 0) return -1; } while (0)
 
 #define SR_READ_HDR( _file, _key, _len) \
 do { \
     U32 k, l; \
-    if (sr_read_hdr((FILE*)(_file), &k, &l) != 0) \
+    if (sr_read_hdr((SR_FILE)(_file), &k, &l) != 0) \
         return -1; \
     (_key) = k; \
     (_len) = l; \
 } while (0)
 
 #define SR_READ_SKIP(        _file,        _len) \
-do {if (sr_read_skip((FILE*)(_file), (U32)(_len)) != 0) return -1; } while (0)
+do {if (sr_read_skip((SR_FILE)(_file), (U32)(_len)) != 0) return -1; } while (0)
 
 #define SR_READ_STRING(        _file,          _p,        _len) \
-do {if (sr_read_string((FILE*)(_file), (void*)(_p), (U32)(_len)) != 0) return -1; } while (0)
+do {if (sr_read_string((SR_FILE)(_file), (void*)(_p), (U32)(_len)) != 0) return -1; } while (0)
 
 #define SR_READ_BUF(        _file,          _p,        _len) \
-do {if (sr_read_buf((FILE*)(_file), (void*)(_p), (U64)(_len)) != 0) return -1; } while (0)
+do {if (sr_read_buf((SR_FILE)(_file), (void*)(_p), (U64)(_len)) != 0) return -1; } while (0)
 
 #define SR_READ_VALUE(        _file,        _suslen,          _p,        _reslen) \
-do {if (sr_read_value((FILE*)(_file), (U32)(_suslen), (void*)(_p), (U32)(_reslen)) != 0) return -1; } while (0)
+do {if (sr_read_value((SR_FILE)(_file), (U32)(_suslen), (void*)(_p), (U32)(_reslen)) != 0) return -1; } while (0)
 
 #define SR_SKIP_NULL_DEV(_dev, _file, _len) \
   if ((_dev) == NULL) { \
@@ -537,7 +537,7 @@ do {if (sr_read_value((FILE*)(_file), (U32)(_suslen), (void*)(_p), (U32)(_reslen
 /*********************************************************************/
 /*         sr_write_hdr                                              */
 /*********************************************************************/
-INLINE int sr_write_hdr (FILE* file, U32 key, U32 len)
+INLINE int sr_write_hdr (SR_FILE file, U32 key, U32 len)
 {
 BYTE  buf[8];
 
@@ -557,7 +557,7 @@ BYTE  buf[8];
 /*********************************************************************/
 /*         sr_write_string                                           */
 /*********************************************************************/
-INLINE int sr_write_string (FILE* file, U32 key, void* str)
+INLINE int sr_write_string (SR_FILE file, U32 key, void* str)
 {
 size_t len = strlen(str) + 1;
 
@@ -583,7 +583,7 @@ size_t len = strlen(str) + 1;
 /*********************************************************************/
 /*         sr_write_buf                                              */
 /*********************************************************************/
-INLINE int sr_write_buf (FILE* file, U32 key, void* p, U64 len)
+INLINE int sr_write_buf (SR_FILE file, U32 key, void* p, U64 len)
 {
 U32    siz;
 U64    tot  = len;
@@ -613,7 +613,7 @@ BYTE*  buf  = p;
 /*********************************************************************/
 /*         sr_write_value                                            */
 /*********************************************************************/
-INLINE int sr_write_value (FILE* file, U32 key, U64 val, U32 len)
+INLINE int sr_write_value (SR_FILE file, U32 key, U64 val, U32 len)
 {
 BYTE    buf[8];
 
@@ -647,7 +647,7 @@ BYTE    buf[8];
 /*********************************************************************/
 /*         sr_read_hdr                                               */
 /*********************************************************************/
-INLINE int sr_read_hdr (FILE* file, U32* key, U32* len)
+INLINE int sr_read_hdr (SR_FILE file, U32* key, U32* len)
 {
 BYTE  buf[8];
 
@@ -668,7 +668,7 @@ BYTE  buf[8];
 /*********************************************************************/
 /*         sr_read_skip                                              */
 /*********************************************************************/
-INLINE int sr_read_skip (FILE* file, U32 len)
+INLINE int sr_read_skip (SR_FILE file, U32 len)
 {
 /* FIXME: Workaround for problem involving gzseek
           and large files.  Just read the data. */
@@ -698,7 +698,7 @@ size_t  tot;
 /*********************************************************************/
 /*         sr_read_string                                            */
 /*********************************************************************/
-INLINE int sr_read_string (FILE* file, void* p, U32 len)
+INLINE int sr_read_string (SR_FILE file, void* p, U32 len)
 {
     TRACE("SR: sr_read_string:                len=0x%8.8x\n", len);
 
@@ -718,7 +718,7 @@ INLINE int sr_read_string (FILE* file, void* p, U32 len)
 /*********************************************************************/
 /*         sr_read_buf                                               */
 /*********************************************************************/
-INLINE int sr_read_buf (FILE* file, void* p, U64 len)
+INLINE int sr_read_buf (SR_FILE file, void* p, U64 len)
 {
 U32    siz;
 U64    tot  = len;
@@ -745,7 +745,7 @@ BYTE*  buf  = p;
 /*********************************************************************/
 /*         sr_read_value                                             */
 /*********************************************************************/
-INLINE int sr_read_value (FILE* file, U32 suslen, void* p, U32 reslen)
+INLINE int sr_read_value (SR_FILE file, U32 suslen, void* p, U32 reslen)
 {
 BYTE    buf[8];
 U64     value;
