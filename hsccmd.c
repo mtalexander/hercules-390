@@ -93,7 +93,8 @@ static void fcb_dump( DEVBLK*, char *, unsigned int );
 static void* test_thread( void* parg)
 {
     TID tid = thread_id();          /* thread identity */
-    int rc, secs = (int) parg;      /* how long to wait */
+    int rc;
+    long secs = (long) parg;        /* how long to wait */
     struct timespec ts;             /* nanosleep argument */
 
     ts.tv_sec  = secs;
@@ -116,7 +117,8 @@ static void* test_thread( void* parg)
 
 int test_cmd(int argc, char *argv[],char *cmdline)
 {
-    int i, secs, rc;
+    int i, rc;
+    long secs;
     TID tids[ NUM_THREADS ];
 
     //UNREFERENCED(argc);
@@ -976,7 +978,7 @@ int fcb_cmd(int argc, char *argv[], char *cmdline)
             /* check for simple mode */
             if  ( strstr(argv[iarg],":") )
             {
-                /* ':" found  ==> new mode */
+                /* ':' found  ==> new mode */
                 ptr = argv[iarg]+4;
                 while (*ptr)
                 {
@@ -999,7 +1001,7 @@ int fcb_cmd(int argc, char *argv[], char *cmdline)
                         return -1;
                     }
                     wfcb[line] = chan;
-                    if ( nxt == 0 )
+                    if ( *nxt == 0 )
                         break ;
                     ptr = nxt + 1;
                 }
@@ -1007,7 +1009,7 @@ int fcb_cmd(int argc, char *argv[], char *cmdline)
             }
             else
             {
-                /* ':" NOT found  ==> old mode */
+                /* ':' NOT found  ==> old mode */
                 ptr = argv[iarg]+4;
                 chan = 0;
                 while (*ptr)
@@ -1028,7 +1030,7 @@ int fcb_cmd(int argc, char *argv[], char *cmdline)
                         return -1;
                     }
                     wfcb[line] = chan;
-                    if ( nxt == 0 )
+                    if ( *nxt == 0 )
                         break ;
                     ptr = nxt + 1;
                 }
