@@ -105,7 +105,7 @@ CFLAGS="`echo $CFLAGS | sed -e 's/-O2//'`"
 # Add the "-W -Wall" options to CFLAGS if we're using gcc...
 
 if test "$GCC" = "yes"; then
-  CFLAGS="$CFLAGS -W -Wall"
+  CFLAGS="-W -Wall $CFLAGS"
 fi
 
 #-------------------------------------------------------#
@@ -2005,8 +2005,10 @@ AC_CACHE_SAVE()
 if test "x${DESTPREFIX}" = "x"; then
     if test "x$prefix" = "xNONE"; then
         DESTPREFIX="/usr/local"
+        DESTEPREFIX="/usr/local"
     else
         DESTPREFIX="${prefix}"
+        DESTEPREFIX="${exec_prefix}"
     fi
 fi
 
@@ -2015,7 +2017,7 @@ case "x${libdir}" in
     *)       DESTLIBS="lib" ;;
 esac
 
-MODULESDIR="${DESTPREFIX}/${DESTLIBS}/${PACKAGE}"
+MODULESDIR="${DESTEPREFIX}/${DESTLIBS}/${PACKAGE}"
 PKGDATADIR="${DESTPREFIX}/share/${PACKAGE}"
 HERC_LOCALEDIR="${DESTPREFIX}/share/locale"
 
