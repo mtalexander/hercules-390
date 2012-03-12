@@ -316,7 +316,7 @@ static void logdump(char *txt,DEVBLK *dev,BYTE *bfr,size_t sz)
             strncat(buf, " ", sizeof(buf));
         }
         MSGBUF(byte, "%02X",bfr[i]);
-        strncat(buf, byte, sizeof(buf));
+        strncat(buf, byte, sizeof(buf) - strlen(buf));
     }
     WRMSG(HHC01050,"D",SSID_TO_LCSS(dev->ssid),dev->devnum,txt,buf);
 }

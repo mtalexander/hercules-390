@@ -994,7 +994,7 @@ static void logdump(char *txt,DEVBLK *dev,BYTE *bfr,size_t sz)
             strncat(buf, " ", sizeof(buf));
         }
         MSGBUF(byte, "%02X", bfr[i]);
-        strncat(buf, byte, sizeof(buf));
+        strncat(buf, byte, sizeof(buf) - strlen(buf));
     }
     WRMSG(HHC01050,"D",SSID_TO_LCSS(dev->ssid),dev->devnum,txt,buf);
     buf[0] = 0;
@@ -1009,7 +1009,7 @@ static void logdump(char *txt,DEVBLK *dev,BYTE *bfr,size_t sz)
             }
         }
         MSGBUF(byte, "%c",(bfr[i] & 0x7f) < 0x20 ? '.' : (bfr[i] & 0x7f));
-        strncat(buf, byte, sizeof(buf));
+        strncat(buf, byte, sizeof(buf) - strlen(buf));
     }
     WRMSG(HHC01051,"D",SSID_TO_LCSS(dev->ssid),dev->devnum,buf);
 }
