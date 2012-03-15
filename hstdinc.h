@@ -119,6 +119,7 @@
   #include <netinet/in.h>
 #endif
 #ifdef HAVE_NETINET_TCP_H
+  #define __FAVOR_BSD           /* needed for some flavors of Linux */
   #include <netinet/tcp.h>
 #endif
 #ifdef HAVE_SYS_IOCTL_H

@@ -82,6 +82,10 @@ static DTEQ dteq[] = {
     { "2860",   "2880"  },
     { "9032",   "2880"  },
 
+    { "AUSC",   "TCPH"  },
+    { "UDPH",   "TCPH"  },
+    { "TLNT",   "TCPH"  },
+
     { NULL,     NULL    } };
 
 

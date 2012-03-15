@@ -93,7 +93,8 @@ dyndev_SRC         = commadpt.c  \
                      tuntap.c    \
                      resolve.c   \
                      qeth.c      \
-                     con1052c.c
+                     con1052c.c  \
+                     him.c
 
 
 # -module         : create a dlopen'able module
@@ -167,7 +168,8 @@ endif
              hdt3525.la  \
              hdtqeth.la  \
              hdt1052c.la \
-             hdtptp.la
+             hdtptp.la   \
+             hdttcph.la
 
 if OPTION_DYNAMIC_LOAD
   modexec_LTLIBRARIES = $(HERCMODS)
@@ -265,6 +267,10 @@ if OPTION_DYNAMIC_LOAD
   hdtptp_la_SOURCES  = resolve.c ctc_ptp.c w32ctca.c tuntap.c
   hdtptp_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
   hdtptp_la_LIBADD   = $(DYNMOD_LD_ADD)
+
+  hdttcph_la_SOURCES  = him.c
+  hdttcph_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
+  hdttcph_la_LIBADD   = $(DYNMOD_LD_ADD)
 
 endif
 
@@ -453,7 +459,8 @@ else
              -dlopen hdt3525.la   \
              -dlopen hdtqeth.la   \
              -dlopen hdt1052c.la  \
-             -dlopen hdtptp.la
+             -dlopen hdtptp.la    \
+             -dlopen hdttcph.la
 
   HDEPS    = dyngui.la    \
              dyninst.la   \
@@ -472,7 +479,8 @@ else
              hdtptp.la    \
              libherc.la   \
              libherct.la  \
-             libhercd.la
+             libhercd.la  \
+             hdttcph.la
 endif
 
 else

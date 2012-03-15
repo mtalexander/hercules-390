@@ -176,6 +176,10 @@ HDL_DEVICE_SECTION;
 #endif /*defined(WIN32)*/
     HDL_DEVICE(QETH, qeth_device_hndinfo    );
     HDL_DEVICE(PTP,  ptp_device_hndinfo     );
+    HDL_DEVICE(AUSC, him_device_hndinfo     );
+    HDL_DEVICE(UDPH, him_device_hndinfo     );
+    HDL_DEVICE(TLNT, him_device_hndinfo     );
+    HDL_DEVICE(TCPH, him_device_hndinfo     );
 
 #endif /*!defined(OPTION_DYNAMIC_LOAD)*/
 

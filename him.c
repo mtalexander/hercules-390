@@ -22,13 +22,8 @@
 #include "hercules.h"
 #include "devtype.h"
 
-#undef  __USE_BSD
-#define __USE_BSD
-#undef  __FAVOR_BSD
 #define __FAVOR_BSD
-
 #include <netinet/ip.h>
-#include <netinet/tcp.h>
 #include <netinet/udp.h>
 
 #include <poll.h>
@@ -354,8 +349,8 @@ char            buf[64];
             {
                 cb_ptr->mts_header.ip_header.ip_src = buff_ptr->ip_header.ip_dst;
                 cb_ptr->sin.sin_addr = buff_ptr->ip_header.ip_dst;
-                cb_ptr->mts_header.sh.tcp_header.source =
-                    cb_ptr->sin.sin_port = buff_ptr->sh.tcp_header.dest;
+                cb_ptr->mts_header.sh.tcp_header.th_sport =
+                    cb_ptr->sin.sin_port = buff_ptr->sh.tcp_header.th_dport;
 
                 if (connect(cb_ptr->sock, &cb_ptr->sin, sizeof(struct sockaddr_in)) < 0) 
                     debug_pf("----- Call to connect, rc = %i\n", errno);
@@ -372,11 +367,11 @@ char            buf[64];
             else if (ntohs( buff_ptr->him_hdr.buffer_length ) > 4)
             {
                 offset = ((buff_ptr->ip_header.ip_hl +
-                    buff_ptr->sh.tcp_header.doff) * 4) + 4;
+                    buff_ptr->sh.tcp_header.th_off) * 4) + 4;
  
                 writelen = ntohs( buff_ptr->him_hdr.buffer_length ) - offset + 4;
-                cb_ptr->mts_header.sh.tcp_header.ack_seq =
-                    htonl( ntohl( cb_ptr->mts_header.sh.tcp_header.ack_seq ) + writelen );
+                cb_ptr->mts_header.sh.tcp_header.th_ack =
+                    htonl( ntohl( cb_ptr->mts_header.sh.tcp_header.th_ack ) + writelen );
  
                 if (writelen > 0)
                 {
@@ -387,8 +382,8 @@ char            buf[64];
                         if ( writelen == 1460 )
                             cb_ptr->watch_sock = 0;
  
-                        window = ntohs( cb_ptr->mts_header.sh.tcp_header.window );
-                        ack_seq = ntohl( cb_ptr->mts_header.sh.tcp_header.ack_seq );
+                        window = ntohs( cb_ptr->mts_header.sh.tcp_header.th_win );
+                        ack_seq = ntohl( cb_ptr->mts_header.sh.tcp_header.th_ack );
 
                         if ( (window - (ack_seq % window)) < (writelen + 4096) )
                         {
@@ -397,7 +392,7 @@ char            buf[64];
                         }
                     }
                 }
-                /* else */ if (buff_ptr->sh.tcp_header.fin)
+                /* else */ if (buff_ptr->sh.tcp_header.th_flags & TH_FIN)
                 {
                     if ( cb_ptr->state == CONNECTED )
                     {
@@ -468,7 +463,7 @@ char            buf[64];
                 cb_ptr->mts_header.ip_header.ip_id =
                     htons( ntohs( cb_ptr->mts_header.ip_header.ip_id ) + 1 );
                 memcpy(iobuf, &cb_ptr->mts_header, 44);
-                ((struct packet_hdr *) iobuf)->sh.tcp_header.fin = 1;
+                ((struct packet_hdr *) iobuf)->sh.tcp_header.th_flags |= TH_FIN;
                 readlen = 44;
 
                 if ( cb_ptr->state == CONNECTED )
@@ -549,7 +544,7 @@ char            buf[64];
  
             getpeername(cb_ptr->sock, &cb_ptr->sin, &sinlen);
             cb_ptr->mts_header.ip_header.ip_src = cb_ptr->sin.sin_addr;
-            cb_ptr->mts_header.sh.tcp_header.source = cb_ptr->sin.sin_port;
+            cb_ptr->mts_header.sh.tcp_header.th_sport = cb_ptr->sin.sin_port;
 
             *residual = count - return_mss( cb_ptr, (struct packet_hdr *) iobuf );
             *unitstat = CSW_CE | CSW_DE;
@@ -564,12 +559,12 @@ char            buf[64];
                 htons( ntohs( cb_ptr->mts_header.ip_header.ip_id ) + 1);
             memcpy(iobuf, &cb_ptr->mts_header, 44);
  
-            buff_ptr->sh.tcp_header.psh = 1;    /* th_flags |= TH_PUSH; */ 
+            buff_ptr->sh.tcp_header.th_flags |= TH_PUSH;
             readlen = read(cb_ptr->sock, &((char *) iobuf)[44], 1460);
  
             if (readlen > 0) {
-                cb_ptr->mts_header.sh.tcp_header.seq =
-                    htonl( ntohl( cb_ptr->mts_header.sh.tcp_header.seq ) + readlen);
+                cb_ptr->mts_header.sh.tcp_header.th_seq =
+                    htonl( ntohl( cb_ptr->mts_header.sh.tcp_header.th_seq ) + readlen);
                 buff_ptr->him_hdr.buffer_length =
                     buff_ptr->ip_header.ip_len = htons( readlen + 40 );
 
@@ -578,7 +573,7 @@ char            buf[64];
 
             }
             else if (readlen == 0) {
-                buff_ptr->sh.tcp_header.fin = 1;  /* th_flags |= TH_FIN; */ 
+                buff_ptr->sh.tcp_header.th_flags |= TH_FIN;
                 cb_ptr->state = CLOSING;
 
                 *residual = count - 44;
@@ -589,7 +584,7 @@ char            buf[64];
                 debug_pf(" --- cb_ptr->state == CONNECTED, read rc = %i\n", readlen);
                 dumpdata("I/O cb", (BYTE *)cb_ptr, sizeof(struct io_cb));
  
-                buff_ptr->sh.tcp_header.rst = 1;  /* sh_flags |= TH_RST; */ 
+                buff_ptr->sh.tcp_header.th_flags |= TH_RST;
                 *residual = count - 44;
                 *unitstat = CSW_CE | CSW_DE | CSW_UC;
 
@@ -614,9 +609,18 @@ char            buf[64];
         break;
 
 
-    case 0x03:
     case 0x1B:
     case 0x4B:
+    /*---------------------------------------------------------------*/
+    /* CONTROL                                                       */
+    /*---------------------------------------------------------------*/
+
+        *residual = 0;
+        *unitstat = CSW_CE | CSW_DE;
+        break;
+
+
+    case 0x03:
     /*---------------------------------------------------------------*/
     /* CONTROL NO-OPERATION                                          */
     /*---------------------------------------------------------------*/
@@ -783,14 +787,14 @@ static void config_subchan ( struct io_cb *iocb_ptr, BYTE *config_data )
     else
     {                              /* Set up socket for non-servers. */
         if (!iocb_ptr->server &&
-            (!iocb_ptr->passive || iocb_ptr->mts_header.sh.tcp_header.dest == 0))
+            (!iocb_ptr->passive || iocb_ptr->mts_header.sh.tcp_header.th_dport == 0))
         {
             iocb_ptr->sock =
-                get_socket(iocb_ptr->protocol, iocb_ptr->mts_header.sh.tcp_header.dest,
+                get_socket(iocb_ptr->protocol, iocb_ptr->mts_header.sh.tcp_header.th_dport,
                     &iocb_ptr->sin, iocb_ptr->passive ? QLEN : 0);
 
             /*  Set the destination port in the MTS header as well */
-            iocb_ptr->mts_header.sh.tcp_header.dest = iocb_ptr->sin.sin_port;
+            iocb_ptr->mts_header.sh.tcp_header.th_dport = iocb_ptr->sin.sin_port;
         }
  
         /* Finish initializing the configuration command reply */
@@ -803,7 +807,7 @@ static void config_subchan ( struct io_cb *iocb_ptr, BYTE *config_data )
         memcpy(reply_ptr->config_ok, Ok, 2);          /* EBCDIC "Ok" */
         reply_ptr->family = AF_LOCAL;
         reply_ptr->protocol = iocb_ptr->protocol;
-        reply_ptr->local_port = iocb_ptr->mts_header.sh.tcp_header.dest;
+        reply_ptr->local_port = iocb_ptr->mts_header.sh.tcp_header.th_dport;
         /* reply_ptr->local_ip = iocb_ptr->mts_header.ip_header.ip_dst; */
         memcpy(reply_ptr->local_ip, &iocb_ptr->mts_header.ip_header.ip_dst, 4);
 
@@ -866,10 +870,10 @@ static int parse_config_data ( struct io_cb *iocb_ptr, char *config_string, int 
     iocb_ptr->mts_header.ip_header.ip_p = IPPROTO_TCP;
     iocb_ptr->mts_header.ip_header.ip_dst.s_addr = our_ipaddr;
 
-    iocb_ptr->mts_header.sh.tcp_header.seq = htonl(1);
-    iocb_ptr->mts_header.sh.tcp_header.doff = 5;
-    iocb_ptr->mts_header.sh.tcp_header.ack = 1;
-    iocb_ptr->mts_header.sh.tcp_header.window = htons(6 * 4096);
+    iocb_ptr->mts_header.sh.tcp_header.th_seq = htonl(1);
+    iocb_ptr->mts_header.sh.tcp_header.th_off = 5;
+    iocb_ptr->mts_header.sh.tcp_header.th_flags |= TH_ACK;
+    iocb_ptr->mts_header.sh.tcp_header.th_win = htons(6 * 4096);
  
     /*
      *  Now, convert the EBCDIC configuration command that MTS just sent to ASCII,
@@ -920,12 +924,12 @@ static int parse_config_data ( struct io_cb *iocb_ptr, char *config_string, int 
             {
                 iocb_ptr->mts_header.ip_header.ip_dst.s_addr = 
                    (ip_addr != INADDR_ANY ? ip_addr : our_ipaddr);
-                iocb_ptr->mts_header.sh.tcp_header.dest = htons(port);
+                iocb_ptr->mts_header.sh.tcp_header.th_dport = htons(port);
             }
             else                           /* Set foreign socket values */
             {
                 iocb_ptr->mts_header.ip_header.ip_src.s_addr = ip_addr;
-                iocb_ptr->mts_header.sh.tcp_header.source = htons(port);
+                iocb_ptr->mts_header.sh.tcp_header.th_sport = htons(port);
             }
             break;
  
@@ -1014,8 +1018,8 @@ static int return_mss ( struct io_cb * iocb_ptr, struct packet_hdr *mss )
     mss->him_hdr.buffer_length = mss->ip_header.ip_len =
         htons( sizeof (struct packet_hdr) - sizeof (struct buff_hdr) );
     mss->ip_header.ip_ttl = MAXTTL;
-    mss->sh.tcp_header.doff = 6;
-    mss->sh.tcp_header.syn = 1;
+    mss->sh.tcp_header.th_off = 6;
+    mss->sh.tcp_header.th_flags |= TH_SYN;
     mss->tcp_optcode = TCPOPT_MAXSEG;
     mss->tcp_optlen = 4;
     mss->tcp_optval = htons(1460);
