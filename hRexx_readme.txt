@@ -89,8 +89,92 @@ well You are all smart enough to understand how it works
 enoug documenation for now! I am fed up of writing :-)
 
 ! oops I forgot an important thing ...
-! when starting/enabling object rexx receiving a 1002 error is not really
+! when starting/enabling object rexx, receiving a 1002 error is not really
 ! a RXAPI_MEMFAIL
 ! it is a consequence of the RXAPI daemon not being active
 ! it should be enough to start it according to the documentation
 ! or have it autostarted at ipl/boot time
+
+I tested with a standard ooRexx and Regina Rexx installation
+and as long the installer sets up correctly the path for dynamic libraries
+the hercules rexx interface will find them
+( tested on fedora core 15, both oorexx and regina )
+
+if the installation is <not standard> then it is a user task to
+setup properly the overall environment
+for example defining the relevant symlinks from /usr/<whatever> to the
+relative paths for the non standared rexx installation
+from :
+/usr/bin to <rexx>/bin
+/usr/lib to <rexx>/lib ( on some linux[es] regina uses lib64 )
+the above are needed to run, to compile
+/usr/include to <rexx>/include
+
+please let me know of standard installations where the Rexx interface
+fails to find the dynamic libraries
+
+changes ..
+
+implemented the "full" autostart facility.
+
+relation with the HREXX_PACKAGE environment variable
+
+when HREXX_PACKAGE undefined/unset ( the most common situation )
+hercules will attempt to enable oorexx first , regina rexx next
+
+when HREXX_PACKAGE has the value "auto"
+same as above
+
+when HREXX_PACKAGE has the value "none"
+no autostart will be attempted
+
+when HREXX_PACKAGE has the value oorexx/regina
+the selected package will be started
+
+the start command has been changed,
+if no package name is entered the above sequence is followed
+
+the help has been modified accordingly
+
+NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
+the REXX path will be used to search ONLY for the scripts invoked via the exec command
+
+the hercules configuration written in rexx DOES NOT FOLLOW that setup
+the configuration is read at the beginning of the startup process and it must
+be read by the hercules configuration program to understand that it is a rexx script
+so it must be reached thru a PATH available to the shell
+after that rexx will be invoked passing the absolute path to the configuration
+
+example
+current directory     ==> /Hercules/sandhawk.390.build
+hercules invoked with ==> ./hercules -f hercules.rexx
+
+inside the hercules rexx
+
+parse source _src
+say _src
+
+returned              ==> MACOSX COMMAND /Hercules/sandhawk.390.build/hercules.rexx
+
+note the full resolved path of the configuration file
+
+
+03/18
+fixed a small glitch where sometimes the rexx status display
+returned a dirty buffer
+
+
+fixed the logic glitch in the extension separator
+USES NOW THE SAME separator as the one used by PATH,
+only one separator to remember !
+
+
+to do ...
+some cosmetics
+small optimizations
+comment the code ( pretty linear and sequential ) but better do it
+
+enjoy
+
+
+
