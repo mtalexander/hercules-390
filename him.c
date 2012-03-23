@@ -130,8 +130,8 @@ static void  dumpdata ( char *label, BYTE *data, int len );
 /*-------------------------------------------------------------------*/
 static int him_init_handler (DEVBLK *dev, int argc, char *argv[])
 {
-int     i;                              /* Array subscript           */
-
+    UNREFERENCED(argc);
+    UNREFERENCED(argv);
     /* The first argument is the file name *
     if ( argc == 0 )
     {
@@ -233,10 +233,8 @@ static void him_execute_ccw (DEVBLK *dev, BYTE code, BYTE flags,
         BYTE chained, U16 count, BYTE prevcode, int ccwseq,
         BYTE *iobuf, BYTE *more, BYTE *unitstat, U16 *residual)
 {
-int             rc;                     /* Return code               */
 int             i;                      /* Loop counter              */
 int             num;                    /* Number of bytes to move   */
-int             open_flags;             /* File open flags           */
 struct io_cb *  cb_ptr;                 /* I/O Control Block pointer */
 int             readlen, writelen, offset, window, ack_seq, temp_sock;
 struct packet_hdr *buff_ptr;
@@ -341,7 +339,7 @@ char            buf[64];
                 writelen = ntohs( buff_ptr->him_hdr.buffer_length ) - 28;
  
                 if (sendto(cb_ptr->sock, &((char *) buff_ptr)[32],
-                    writelen, 0, &cb_ptr->sin, sizeof(struct sockaddr_in)) < 0)
+                    writelen, 0, (struct sockaddr *)&cb_ptr->sin, sizeof(struct sockaddr_in)) < 0)
                     debug_pf("sendto");
 
                 *unitstat = CSW_CE | CSW_DE;
@@ -363,7 +361,7 @@ char            buf[64];
                 cb_ptr->mts_header.sh.tcp_header.th_sport =
                     cb_ptr->sin.sin_port = buff_ptr->sh.tcp_header.th_dport;
 
-                if (connect(cb_ptr->sock, &cb_ptr->sin, sizeof(struct sockaddr_in)) < 0) 
+                if (connect(cb_ptr->sock, (struct sockaddr *)&cb_ptr->sin, sizeof(struct sockaddr_in)) < 0) 
                     debug_pf("----- Call to connect, rc = %i\n", errno);
  
                 cb_ptr->state = CONNECTED;
@@ -533,7 +531,7 @@ char            buf[64];
             memcpy(buff_ptr, &cb_ptr->mts_header, 32);
 
             readlen = recvfrom(cb_ptr->sock,
-                &((char *) buff_ptr)[32], 1460, 0, &cb_ptr->sin, &sinlen);
+                &((char *) buff_ptr)[32], 1460, 0, (struct sockaddr *)&cb_ptr->sin, &sinlen);
  
             buff_ptr->him_hdr.buffer_length = 
                 buff_ptr->ip_header.ip_len = htons( readlen + 28 );
@@ -548,12 +546,12 @@ char            buf[64];
         else if ( cb_ptr->passive && cb_ptr->state == INITIALIZED )
         {
             temp_sock = cb_ptr->sock;
-            cb_ptr->sock = accept(temp_sock, &cb_ptr->sin, &sinlen);
+            cb_ptr->sock = accept(temp_sock, (struct sockaddr *)&cb_ptr->sin, &sinlen);
  
             (void) close(temp_sock);
             cb_ptr->state = CONNECTED;
  
-            getpeername(cb_ptr->sock, &cb_ptr->sin, &sinlen);
+            getpeername(cb_ptr->sock, (struct sockaddr *)&cb_ptr->sin, &sinlen);
             cb_ptr->mts_header.ip_header.ip_src = cb_ptr->sin.sin_addr;
             cb_ptr->mts_header.sh.tcp_header.th_sport = cb_ptr->sin.sin_port;
 
@@ -990,11 +988,11 @@ static int get_socket ( int protocol, int port, struct sockaddr_in *sin, int qle
         debug_pf("setsockopt\n");
  
     /* Bind the socket */
-    if (bind(s, &our_sin, sizeof(struct sockaddr_in)) < 0)
+    if (bind(s, (struct sockaddr *)&our_sin, sizeof(struct sockaddr_in)) < 0)
         debug_pf("can't bind to port\n");
  
     /* Retrieve complete socket info */
-    if (getsockname(s, &our_sin, &sinlen) < 0)
+    if (getsockname(s, (struct sockaddr *)&our_sin, &sinlen) < 0)
         debug_pf("getsockname\n");
     else
         debug_pf("In get_socket(), port = %d\n", our_sin.sin_port);
