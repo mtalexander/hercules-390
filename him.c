@@ -259,6 +259,7 @@ char            buf[64];
         gettimeofday(&tv, NULL);
         strftime(buf, sizeof buf, "%H:%M:%S", localtime(&tv.tv_sec));
         debug_pf(" %s.%06d -- devnum %04X opcode %02X\n", buf, tv.tv_usec, dev->devnum, code);
+        debug_pf(" chained = %02X, prevcode = %02X, ccwseq = %i\n", chained, prevcode, ccwseq);
     /* } */
 
     /* Process depending on CCW opcode */
@@ -284,26 +285,36 @@ char            buf[64];
             *unitstat = CSW_CE | CSW_DE;
 
         }
-        else if ( cb_ptr->state == CONNECTED && buff_ptr->him_hdr.rnr_flag )
+        else if ( ntohs( buff_ptr->him_hdr.buffer_length ) == 0 ) /* OOB information */
         {
-            /* FD_CLR(cb_ptr->sock, readfds); */
-            debug_pf("-----  RNR Flag = ON received.\n");
-            cb_ptr->watch_sock = 0;
+            if ( buff_ptr->him_hdr.rnr_flag )
+            {
+                if ( cb_ptr->state == CONNECTED )
+                {
+                    debug_pf("-----  RNR Flag = ON received.\n");
+                    cb_ptr->watch_sock = 0;
 
-            cb_ptr->rnr = 1;
-            *unitstat = CSW_CE | CSW_DE | CSW_UX;
+                    cb_ptr->rnr = 1;
+                    *unitstat = CSW_CE | CSW_DE | CSW_UX;
+                }
+                else
+                {
+                    debug_pf("-----  RNR Flag = ON, but IGNORED.\n");
+                    *unitstat = CSW_CE | CSW_DE;
+                }
 
-        }
-        else if ( cb_ptr->rnr && !buff_ptr->him_hdr.rnr_flag )
-        {
-            /* FD_SET(cb_ptr->sock, readfds); */
-            debug_pf("-----  RNR Flag = OFF received.\n");
+            }
+            else if ( ( cb_ptr->rnr || cb_ptr->state == CLOSING) && !buff_ptr->him_hdr.rnr_flag )
+            {
+                /* FD_SET(cb_ptr->sock, readfds); */
+                debug_pf("-----  RNR Flag = OFF received.\n");
 
-            start_sock_thread(dev);
+                start_sock_thread(dev);
 
-            cb_ptr->rnr = 0;
-            *unitstat = CSW_CE | CSW_DE;
+                cb_ptr->rnr = 0;
+                *unitstat = CSW_CE | CSW_DE;
 
+            }
         }
         else if ( buff_ptr->him_hdr.init_flag )
         {
@@ -486,7 +497,7 @@ char            buf[64];
 
             }
 
-            if (cb_ptr->protocol == IPPROTO_TCP && cb_ptr->state == INITIALIZED)
+            if ( cb_ptr->protocol == IPPROTO_TCP && cb_ptr->state == INITIALIZED )
                 start_sock_thread(dev);
 
             /* Remove first entry from queue, a NOP on a closed connection */
@@ -581,7 +592,8 @@ char            buf[64];
 
             }
             else {
-                debug_pf(" --- cb_ptr->state == CONNECTED, read rc = %i\n", readlen);
+                debug_pf(" --- cb_ptr->state == CONNECTED, read rc = %i, errno = %d\n",
+                   readlen, errno);
                 dumpdata("I/O cb", (BYTE *)cb_ptr, sizeof(struct io_cb));
  
                 buff_ptr->sh.tcp_header.th_flags |= TH_RST;
@@ -609,18 +621,9 @@ char            buf[64];
         break;
 
 
+    case 0x03:
     case 0x1B:
     case 0x4B:
-    /*---------------------------------------------------------------*/
-    /* CONTROL                                                       */
-    /*---------------------------------------------------------------*/
-
-        *residual = 0;
-        *unitstat = CSW_CE | CSW_DE;
-        break;
-
-
-    case 0x03:
     /*---------------------------------------------------------------*/
     /* CONTROL NO-OPERATION                                          */
     /*---------------------------------------------------------------*/
@@ -993,9 +996,11 @@ static int get_socket ( int protocol, int port, struct sockaddr_in *sin, int qle
     /* Retrieve complete socket info */
     if (getsockname(s, &our_sin, &sinlen) < 0)
         debug_pf("getsockname\n");
+    else
+        debug_pf("In get_socket(), port = %d\n", our_sin.sin_port);
  
     if (socktype == SOCK_STREAM && qlen && listen(s, qlen) < 0)
-        debug_pf("can't listen on port");
+        debug_pf("can't listen on port\n");
  
     if (sin != NULL)
         memcpy(sin, (char *)&our_sin, sizeof (struct sockaddr_in));
@@ -1070,9 +1075,13 @@ static void* skt_thread (DEVBLK* dev)
     sleep_timer = 20000;   /* microseconds */
 
     while ( ((struct io_cb *)dev->dev_data)->watch_sock )
-        if ( !((struct io_cb *)dev->dev_data)->rnr && poll(&read_chk, 1, poll_timer) > 0 )
+        if ( !((struct io_cb *)dev->dev_data)->rnr && poll(&read_chk, 1, poll_timer) > 0 
+           && (read_chk.revents & POLLIN) )
+        {
+            debug_pf(" ----- Status available from socket, REVENTS = %04X\n", read_chk.revents);
             rc = device_attention (dev, CSW_ATTN);
-
+            break;
+        }
         else
             usleep( sleep_timer );
 
