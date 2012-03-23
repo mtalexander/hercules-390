@@ -779,7 +779,7 @@ OSA_IEAR *iear = (OSA_IEAR*)rdev->qrspbf;
 static void raise_adapter_interrupt(DEVBLK *dev)
 {
     obtain_lock(&dev->lock);
-    dev->pciscsw.flag2 |= SCSW2_Q;
+    dev->pciscsw.flag2 |= SCSW2_Q | SCSW2_FC_START;
     dev->pciscsw.flag3 |= SCSW3_SC_INTER | SCSW3_SC_PEND;
     dev->pciscsw.chanstat = CSW_PCI;
     QUEUE_IO_INTERRUPT(&dev->pciioint);
@@ -1144,6 +1144,8 @@ int i;
     memcpy(dev->devid, sense_id_bytes, sizeof(sense_id_bytes));
     dev->devtype = dev->devid[1] << 8 | dev->devid[2];
 
+    dev->fla[0] = 0x0101;
+
     if(!(grouped = group_device(dev,OSA_GROUP_SIZE)) && !dev->member)
     {
         dev->group->grp_data = grp = malloc(sizeof(OSA_GRP));
@@ -1212,6 +1214,17 @@ int i;
             grp->ttmtu = strdup(argv[++i]);
             continue;
         }
+        else if(!strcasecmp("chpid",argv[i]) && (i+1) < argc)
+        {
+            int chpid;
+            char c;
+            if(sscanf(argv[++i], "%x%c", &chpid, &c) != 1 || chpid < 0x00 || chpid > 0xFF)
+                logmsg(_("QETH: Invalid channel path id %s for device %4.4X\n"),argv[i],dev->devnum);
+
+            else
+                dev->pmcw.chpid[0] = chpid;
+            continue;
+        }
         else if(!strcasecmp("debug",argv[i]) && (i+1) < argc)
         {
             grp->debug = 1;
@@ -1224,6 +1237,7 @@ int i;
 
     if(grouped)
     {
+//      dev->group->memdev[OSA_DATA_DEVICE]->pmcw.flag4 |= PMCW4_Q;
         for(i = 0; i < OSA_GROUP_SIZE; i++)
             dev->group->memdev[i]->pmcw.flag4 |= PMCW4_Q;
     }
@@ -1367,29 +1381,38 @@ static int qeth_ssqd_desc ( DEVBLK *dev, void *desc )
 
     STORE_HW(chsc_rsp24->sch, dev->subchan);
 
-    chsc_rsp24->flags |= ( CHSC_FLAG_QDIO_CAPABILITY | CHSC_FLAG_VALIDITY );
+    if(dev->pmcw.flag4 & PMCW4_Q)
+    {
+#if 0
+chsc_rsp24->pcnt = 0x10;
+chsc_rsp24->icnt = 0x01;
+chsc_rsp24->ocnt = 0x20;
+STORE_HW(chsc_rsp24->qdioac2, 0x4000);
+#endif
+        chsc_rsp24->flags |= ( CHSC_FLAG_QDIO_CAPABILITY | CHSC_FLAG_VALIDITY );
 
-    chsc_rsp24->qdioac1 |= ( AC1_SIGA_INPUT_NEEDED | AC1_SIGA_OUTPUT_NEEDED );
-    chsc_rsp24->qdioac1 |= AC1_AUTOMATIC_SYNC_ON_OUT_PCI;
+        chsc_rsp24->qdioac1 |= ( AC1_SIGA_INPUT_NEEDED | AC1_SIGA_OUTPUT_NEEDED );
+        chsc_rsp24->qdioac1 |= AC1_AUTOMATIC_SYNC_ON_OUT_PCI;
 
 #if defined(_FEATURE_QEBSM)
-    if(FACILITY_ENABLED_DEV(QEBSM))
-    {
-        STORE_DW(chsc_rsp24->sch_token, IOID2TKN((dev->ssid << 16) | dev->subchan));
-        chsc_rsp24->qdioac1 |= ( AC1_SC_QEBSM_AVAILABLE | AC1_SC_QEBSM_ENABLED );
-    }
+        if(FACILITY_ENABLED_DEV(QEBSM))
+        {
+            STORE_DW(chsc_rsp24->sch_token, IOID2TKN((dev->ssid << 16) | dev->subchan));
+            chsc_rsp24->qdioac1 |= ( AC1_SC_QEBSM_AVAILABLE | AC1_SC_QEBSM_ENABLED );
+        }
 #endif /*defined(_FEATURE_QEBSM)*/
 
 #if defined(_FEATURE_QDIO_THININT)
-    if(FACILITY_ENABLED_DEV(QDIO_THININT))
-        chsc_rsp24->qdioac1 |= AC1_AUTOMATIC_SYNC_ON_THININT;
+        if(FACILITY_ENABLED_DEV(QDIO_THININT))
+            chsc_rsp24->qdioac1 |= AC1_AUTOMATIC_SYNC_ON_THININT;
 #endif /*defined(_FEATURE_QDIO_THININT)*/
 
 #if 1 // ZZTEST
-      chsc_rsp24->icnt = QDIO_MAXQ;
-      chsc_rsp24->ocnt = QDIO_MAXQ;
-      chsc_rsp24->mbccnt = 0x04;
+          chsc_rsp24->icnt = QDIO_MAXQ;
+          chsc_rsp24->ocnt = QDIO_MAXQ;
+          chsc_rsp24->mbccnt = 0x04;
 #endif
+    }
 
     return 0;
 }
