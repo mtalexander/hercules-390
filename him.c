@@ -22,6 +22,9 @@
 #include "hercules.h"
 #include "devtype.h"
 
+#define ENABLE_TRACING_STMTS 1
+#include "dbgtrace.h"
+
 #define __FAVOR_BSD
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -121,7 +124,6 @@ static int get_socket ( int protocol, int port, struct sockaddr_in *sin, int qle
 static int return_mss ( struct io_cb * iocb_ptr, struct packet_hdr *mss );
 static int start_sock_thread ( DEVBLK* dev );
 static void* skt_thread ( DEVBLK* dev );
-static void  debug_pf ( __const char *__restrict __fmt, ... );
 static void  dumpdata ( char *label, BYTE *data, int len );
 
 
@@ -181,7 +183,7 @@ static int him_init_handler (DEVBLK *dev, int argc, char *argv[])
     dev->dev_data = malloc(sizeof(struct io_cb));
     memset ((char *) dev->dev_data, '\0', sizeof(struct io_cb));
 
-    debug_pf("Device %s at %04X initialized, version = %s %s\n",
+    TRACE("Device %s at %04X initialized, version = %s %s\n",
         dev->typname, dev->devnum, __TIME__, __DATE__);
 
     /* Activate I/O tracing */
@@ -220,7 +222,7 @@ static int him_close_device ( DEVBLK *dev )
     /* Free the I/O Control Block */
     free(dev->dev_data);
 
-    debug_pf("Device termination successful\n");
+    TRACE("Device termination successful\n");
 
     return 0;
 } /* end function him_close_device */
@@ -256,8 +258,8 @@ char            buf[64];
     { */
         gettimeofday(&tv, NULL);
         strftime(buf, sizeof buf, "%H:%M:%S", localtime(&tv.tv_sec));
-        debug_pf(" %s.%06d -- devnum %04X opcode %02X\n", buf, tv.tv_usec, dev->devnum, code);
-        debug_pf(" chained = %02X, prevcode = %02X, ccwseq = %i\n", chained, prevcode, ccwseq);
+        TRACE(" %s.%06d -- devnum %04X opcode %02X\n", buf, tv.tv_usec, dev->devnum, code);
+        TRACE(" chained = %02X, prevcode = %02X, ccwseq = %i\n", chained, prevcode, ccwseq);
     /* } */
 
     /* Process depending on CCW opcode */
@@ -270,10 +272,10 @@ char            buf[64];
 
         *residual = 0;
 
-        debug_pf("data from MTS       DevNum = %04X\n", dev->devnum);
+        TRACE("data from MTS       DevNum = %04X\n", dev->devnum);
         dumpdata("", iobuf, (count < 96 ? count : 96));
         if (count > 44 && cb_ptr->protocol == IPPROTO_TCP)
-            debug_pf("%.*s\n", count - 44, &((char *) iobuf)[44]);
+            TRACE("%.*s\n", count - 44, &((char *) iobuf)[44]);
 
         if ( buff_ptr->him_hdr.finished_flag )
         {
@@ -289,7 +291,7 @@ char            buf[64];
             {
                 if ( cb_ptr->state == CONNECTED )
                 {
-                    debug_pf("-----  RNR Flag = ON received.\n");
+                    TRACE("-----  RNR Flag = ON received.\n");
                     cb_ptr->watch_sock = 0;
 
                     cb_ptr->rnr = 1;
@@ -297,7 +299,7 @@ char            buf[64];
                 }
                 else
                 {
-                    debug_pf("-----  RNR Flag = ON, but IGNORED.\n");
+                    TRACE("-----  RNR Flag = ON, but IGNORED.\n");
                     *unitstat = CSW_CE | CSW_DE;
                 }
 
@@ -305,7 +307,7 @@ char            buf[64];
             else if ( ( cb_ptr->rnr || cb_ptr->state == CLOSING) && !buff_ptr->him_hdr.rnr_flag )
             {
                 /* FD_SET(cb_ptr->sock, readfds); */
-                debug_pf("-----  RNR Flag = OFF received.\n");
+                TRACE("-----  RNR Flag = OFF received.\n");
 
                 start_sock_thread(dev);
 
@@ -340,7 +342,7 @@ char            buf[64];
  
                 if (sendto(cb_ptr->sock, &((char *) buff_ptr)[32],
                     writelen, 0, (struct sockaddr *)&cb_ptr->sin, sizeof(struct sockaddr_in)) < 0)
-                    debug_pf("sendto");
+                    TRACE("sendto");
 
                 *unitstat = CSW_CE | CSW_DE;
             }
@@ -362,7 +364,7 @@ char            buf[64];
                     cb_ptr->sin.sin_port = buff_ptr->sh.tcp_header.th_dport;
 
                 if (connect(cb_ptr->sock, (struct sockaddr *)&cb_ptr->sin, sizeof(struct sockaddr_in)) < 0) 
-                    debug_pf("----- Call to connect, rc = %i\n", errno);
+                    TRACE("----- Call to connect, rc = %i\n", errno);
  
                 cb_ptr->state = CONNECTED;
 
@@ -442,7 +444,7 @@ char            buf[64];
 
         if ( cb_ptr->read_q[0] != EMPTY )
         {       /* Data that needs to be sent to MTS has been queued */
-            debug_pf(" READ_Q = %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
+            TRACE(" READ_Q = %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
                 cb_ptr->read_q[0], cb_ptr->read_q[1], cb_ptr->read_q[2], cb_ptr->read_q[3],
                 cb_ptr->read_q[4], cb_ptr->read_q[5], cb_ptr->read_q[6], cb_ptr->read_q[7],
                 cb_ptr->read_q[8], cb_ptr->read_q[9]);
@@ -511,7 +513,7 @@ char            buf[64];
             *residual = count;
             *unitstat = CSW_CE | CSW_DE | CSW_UX;
 
-            debug_pf(" ------ READ ccw, STATE = CLOSING\n");
+            TRACE(" ------ READ ccw, STATE = CLOSING\n");
 
         }
         else if ( !poll(&read_chk, 1, 50) )  /* i.e. no data available from the socket */
@@ -558,7 +560,7 @@ char            buf[64];
             *residual = count - return_mss( cb_ptr, (struct packet_hdr *) iobuf );
             *unitstat = CSW_CE | CSW_DE;
 
-            debug_pf("just accepted call on socket %d for socket %d\n", temp_sock, cb_ptr->sock);
+            TRACE("just accepted call on socket %d for socket %d\n", temp_sock, cb_ptr->sock);
 
         }
         else if ( cb_ptr->state == CONNECTED ) /* A UDP connection will never be in this state */
@@ -590,7 +592,7 @@ char            buf[64];
 
             }
             else {
-                debug_pf(" --- cb_ptr->state == CONNECTED, read rc = %i, errno = %d\n",
+                TRACE(" --- cb_ptr->state == CONNECTED, read rc = %i, errno = %d\n",
                    readlen, errno);
                 dumpdata("I/O cb", (BYTE *)cb_ptr, sizeof(struct io_cb));
  
@@ -605,15 +607,15 @@ char            buf[64];
             *residual = count;
             *unitstat = CSW_CE | CSW_DE | CSW_UX;
 
-            debug_pf(" ------ Unexpected READ ccw, STATE = %d\n", cb_ptr->state);
+            TRACE(" ------ Unexpected READ ccw, STATE = %d\n", cb_ptr->state);
         }
 
         if ( *residual != count) /* i.e. we are returning data */
         {
-            debug_pf("data  to  MTS       DevNum = %04X\n", dev->devnum);
+            TRACE("data  to  MTS       DevNum = %04X\n", dev->devnum);
             dumpdata("", iobuf, 44);
             if (readlen > 0 && cb_ptr->protocol == IPPROTO_TCP)
-                debug_pf("%.*s\n", readlen, &((char *) iobuf)[44]);
+                TRACE("%.*s\n", readlen, &((char *) iobuf)[44]);
         }
 
         break;
@@ -682,7 +684,7 @@ char            buf[64];
 
     } /* end switch(code) */
 
- /* debug_pf("------- devnum: %04X, Returning status = %02X, after call = %02X\n",
+ /* TRACE("------- devnum: %04X, Returning status = %02X, after call = %02X\n",
         dev->devnum, *unitstat, code); */
 
 } /* end function him_execute_ccw */
@@ -850,10 +852,10 @@ static int parse_config_data ( struct io_cb *iocb_ptr, char *config_string, int 
     {
         /* our_ipaddr = -970268084; * current ADSL address 76.226.42.198 */
         our_ipaddr = *(u_int *)hostent_ptr->h_addr;
-        debug_pf("Our IP address = %08X\n", ntohl( (u_int)our_ipaddr ) );
+        TRACE("Our IP address = %08X\n", ntohl( (u_int)our_ipaddr ) );
     }
     else
-        debug_pf("Excuse me?,  What is our IP address?\n");
+        TRACE("Excuse me?,  What is our IP address?\n");
  
  
     /*
@@ -941,10 +943,10 @@ static int parse_config_data ( struct io_cb *iocb_ptr, char *config_string, int 
         }
  
         if (echo_rhs == NULL)
-            debug_pf(" %s, no right hand side\n", lhs_token);
+            TRACE(" %s, no right hand side\n", lhs_token);
 
         else
-            debug_pf(" %s = %s\n", lhs_token, echo_rhs);
+            TRACE(" %s = %s\n", lhs_token, echo_rhs);
  
     } while ( (lhs_token = strtok(NULL, " =")) );
 
@@ -980,25 +982,25 @@ static int get_socket ( int protocol, int port, struct sockaddr_in *sin, int qle
     /* Allocate a socket */
     s = socket(PF_INET, socktype, 0);
     if (s < 0)
-        debug_pf("can't create socket\n");
+        TRACE("can't create socket\n");
  
     /* Set REUSEADDR option */
     optval = 4;
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) < 0)
-        debug_pf("setsockopt\n");
+        TRACE("setsockopt\n");
  
     /* Bind the socket */
     if (bind(s, (struct sockaddr *)&our_sin, sizeof(struct sockaddr_in)) < 0)
-        debug_pf("can't bind to port\n");
+        TRACE("can't bind to port\n");
  
     /* Retrieve complete socket info */
     if (getsockname(s, (struct sockaddr *)&our_sin, &sinlen) < 0)
-        debug_pf("getsockname\n");
+        TRACE("getsockname\n");
     else
-        debug_pf("In get_socket(), port = %d\n", our_sin.sin_port);
+        TRACE("In get_socket(), port = %d\n", our_sin.sin_port);
  
     if (socktype == SOCK_STREAM && qlen && listen(s, qlen) < 0)
-        debug_pf("can't listen on port\n");
+        TRACE("can't listen on port\n");
  
     if (sin != NULL)
         memcpy(sin, (char *)&our_sin, sizeof (struct sockaddr_in));
@@ -1076,7 +1078,7 @@ static void* skt_thread (DEVBLK* dev)
         if ( !((struct io_cb *)dev->dev_data)->rnr && poll(&read_chk, 1, poll_timer) > 0 
            && (read_chk.revents & POLLIN) )
         {
-            debug_pf(" ----- Status available from socket, REVENTS = %04X\n", read_chk.revents);
+            TRACE(" ----- Status available from socket, REVENTS = %04X\n", read_chk.revents);
             rc = device_attention (dev, CSW_ATTN);
             break;
         }
@@ -1103,7 +1105,7 @@ static void* skt_thread (DEVBLK* dev)
         }
 
     if ( poll_timer > 32000 )
-        debug_pf("----- Poll timer TIMEOUT, should probably close connection\n");
+        TRACE("----- Poll timer TIMEOUT, should probably close connection\n");
 */
 
     /* obtain_lock( &dev->lock );
@@ -1132,37 +1134,21 @@ static void* skt_thread (DEVBLK* dev)
 
 
 /*
- *  Used for writing debug output on stream 5
- */
-
-static void debug_pf ( __const char *__restrict __fmt, ... )
-{
-    char write_buf[2000];             /* big enough for an IP packet */
-    va_list arglist;
-
-    va_start( arglist, __fmt );
-    write( 5, write_buf, vsprintf( write_buf, __fmt, arglist ) );
-
-    va_end( arglist );
-
-} /* end function debug_pf */
-
-
-/*
  *  Used for dumping debugging data in a formatted hexadecimal form
  */
 
 static void dumpdata ( char *label, BYTE *data, int len )
 {
-    char *hex = "0123456789ABCDEF", write_buf[100], ascii_hex[80];
+#if _ENABLE_TRACING_STMTS_IMPL
+    char *hex = "0123456789ABCDEF", ascii_hex[80];
     int index = 0, space_chk = 0;
  
     if ( strlen(label) > 0 )
-        write( 5, write_buf, sprintf(write_buf, "%s: \n", label) );
+        TRACE("%s: \n", label);
 
     if ( len > 256 )
     {
-        write( 5, write_buf, sprintf(write_buf, "Dumpdata len = %i, will be truncated\n", len) );
+        TRACE("Dumpdata len = %i, will be truncated\n", len);
         len = 256;
     }   
 
@@ -1178,7 +1164,7 @@ static void dumpdata ( char *label, BYTE *data, int len )
         if ( index > 71 )
         {
             ascii_hex[index] = '\0';
-            write( 5, write_buf, sprintf(write_buf, " %s\n", ascii_hex) );
+            TRACE(" %s\n", ascii_hex);
             index = space_chk = 0;
         }
         data++;
@@ -1186,6 +1172,10 @@ static void dumpdata ( char *label, BYTE *data, int len )
  
     ascii_hex[index] = '\0';
     if ( strlen(ascii_hex) > 0 )
-        write( 5, write_buf, sprintf(write_buf, " %s\n", ascii_hex) );
-
+        TRACE(" %s\n", ascii_hex);
+#else
+    UNREFERENCED(label);
+    UNREFERENCED(data);
+    UNREFERENCED(len);
+#endif
 } /* end function dumpdata */
