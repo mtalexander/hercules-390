@@ -1,11 +1,12 @@
-/* CHANNEL.C    (c) Copyright Roger Bowler, 1999-2011                */
+/* CHANNEL.C    (c) Copyright Roger Bowler, 1999-2012                */
+/*              (c) Copyright Jan Jaeger,   1999-2012                */
 /*              ESA/390 Channel Emulator                             */
 /*                                                                   */
 /*   Released under "The Q Public License Version 1"                 */
 /*   (http://www.hercules-390.org/herclic.html) as modifications to  */
 /*   Hercules.                                                       */
 
-// $Id$
+/* z/Architecture support - (c) Copyright Jan Jaeger, 1999-2012      */
 
 /*-------------------------------------------------------------------*/
 /* This module contains the channel subsystem functions for the      */
@@ -18,7 +19,6 @@
 /*      Fix program check on NOP due to addressing - Jan Jaeger      */
 /*      Fix program check on TIC as first ccw on RSCH - Jan Jaeger   */
 /*      Fix PCI intermediate status flags             - Jan Jaeger   */
-/* z/Architecture support - (c) Copyright Jan Jaeger, 1999-2009      */
 /*      64-bit IDAW support - Roger Bowler v209                  @IWZ*/
 /*      Incorrect-length-indication-suppression - Jan Jaeger         */
 /*      Read backward support contributed by Hackules   13jun2002    */
@@ -3645,18 +3645,37 @@ retry:
     if(unlikely(FACILITY_ENABLED(QDIO_THININT, regs)
       && (dev->pciscsw.flag2 & SCSW2_Q) && dev->thinint) )
     {
+        *ioid = *ioparm = 0;
+
         *iointid = 0x80000000
-                 | ((dev->pmcw.flag4 & PMCW4_ISC) << 24)
-                 | ((dev->pmcw.flag25 & PMCW25_TYPE) << 7);
+             | (
+#if defined(_FEATURE_IO_ASSIST)
+    /* For I/O Assisted devices use (V)ISC */
+               (SIE_MODE(regs)) ?
+                 (icode == SIE_NO_INTERCEPT) ?
+                   ((dev->pmcw.flag25 & PMCW25_VISC) << 27) :
+                   ((dev->pmcw.flag25 & PMCW25_VISC) << 27)
+                     | (dev->pmcw.zone << 16)
+                     | ((dev->pmcw.flag27 & PMCW27_I) << 8) :
+#endif
+                 ((dev->pmcw.flag4 & PMCW4_ISC) << 24)
+                   | ((dev->pmcw.flag25 & PMCW25_TYPE) << 7)
+#if defined(_FEATURE_IO_ASSIST)
+                   | (dev->pmcw.zone << 16)
+                   | ((dev->pmcw.flag27 & PMCW27_I) << 8)
+#endif
+                                                          ) ;
 
-        /* Clear the pending PCI status */
-        dev->pciscsw.flag2 &= ~(SCSW2_FC | SCSW2_AC);
-        dev->pciscsw.flag3 &= ~(SCSW3_SC);
-        dev->pcipending = 0;
+        if(!SIE_MODE(regs) || icode != SIE_INTERCEPT_IOINTP)
+        {
+            /* Clear the pending PCI status */
+            dev->pciscsw.flag2 &= ~(SCSW2_FC | SCSW2_AC);
+            dev->pciscsw.flag3 &= ~(SCSW3_SC);
+            dev->pcipending = 0;
 
-        /* Dequeue the interrupt */
-        DEQUEUE_IO_INTERRUPT_QLOCKED(&dev->pciioint);
-
+            /* Dequeue the interrupt */
+            DEQUEUE_IO_INTERRUPT_QLOCKED(&dev->pciioint);
+        }
     }
     else
 #endif /*defined(FEATURE_QDIO_THININT)*/
@@ -3671,6 +3690,7 @@ retry:
                      | ((dev->pmcw.flag27 & PMCW27_I) << 8) :
 #endif
                  ((dev->pmcw.flag4 & PMCW4_ISC) << 24)
+                   | ((dev->pmcw.flag25 & PMCW25_TYPE) << 7)
 #if defined(_FEATURE_IO_ASSIST)
                    | (dev->pmcw.zone << 16)
                    | ((dev->pmcw.flag27 & PMCW27_I) << 8)
