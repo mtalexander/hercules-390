@@ -134,6 +134,7 @@ static int him_init_handler (DEVBLK *dev, int argc, char *argv[])
 {
     UNREFERENCED(argc);
     UNREFERENCED(argv);
+
     /* The first argument is the file name *
     if ( argc == 0 )
     {
@@ -213,6 +214,25 @@ static void him_query_device (DEVBLK *dev, char **devclass,
 
 
 /*-------------------------------------------------------------------*/
+/* Halt the device                                                   */
+/*-------------------------------------------------------------------*/
+static void him_halt_device ( DEVBLK *dev )
+{
+    {
+        struct timeval tv;
+        char   ts_buf[64];
+
+        gettimeofday(&tv, NULL);
+        strftime(ts_buf, sizeof(ts_buf), "%H:%M:%S", localtime(&tv.tv_sec));
+        TRACE(" %s.%06d -- devnum %04X HALT\n", ts_buf, tv.tv_usec, dev->devnum);
+    }
+
+    ((struct io_cb *)dev->dev_data)->unused_0 = 1;
+    TRACE("---------- Device Halt\n");
+} /* end function him_halt_device */
+
+
+/*-------------------------------------------------------------------*/
 /* Close the device                                                  */
 /*-------------------------------------------------------------------*/
 static int him_close_device ( DEVBLK *dev )
@@ -242,25 +262,25 @@ int             readlen, writelen, offset, window, ack_seq, temp_sock;
 struct packet_hdr *buff_ptr;
 struct pollfd   read_chk;
 unsigned int    sinlen = sizeof (struct sockaddr_in);
-struct          timeval tv;
-char            buf[64];
 
     UNREFERENCED(flags);
     UNREFERENCED(chained);
     UNREFERENCED(prevcode);
     UNREFERENCED(ccwseq);
 
-    /* Copy I/O Control Block and Channel I/O buffer pointers to local variables */
+    /* if (code == 1 || code == 2) */
+    {
+        struct timeval tv;
+        char   ts_buf[64];
+
+        gettimeofday(&tv, NULL);
+        strftime(ts_buf, sizeof(ts_buf), "%H:%M:%S", localtime(&tv.tv_sec));
+        TRACE(" %s.%06d -- devnum %04X opcode %02X\n", ts_buf, tv.tv_usec, dev->devnum, code);
+    }
+
+    /* Copy I/O Control Block and Channel I/O buffer pointers */
     cb_ptr = (struct io_cb *) dev->dev_data;
     buff_ptr = (struct packet_hdr *) iobuf;
-
-    /* if (code == 1 || code == 2)
-    { */
-        gettimeofday(&tv, NULL);
-        strftime(buf, sizeof buf, "%H:%M:%S", localtime(&tv.tv_sec));
-        TRACE(" %s.%06d -- devnum %04X opcode %02X\n", buf, tv.tv_usec, dev->devnum, code);
-        TRACE(" chained = %02X, prevcode = %02X, ccwseq = %i\n", chained, prevcode, ccwseq);
-    /* } */
 
     /* Process depending on CCW opcode */
     switch (code) {
@@ -271,6 +291,7 @@ char            buf[64];
     /*---------------------------------------------------------------*/
 
         *residual = 0;
+        *unitstat = CSW_CE | CSW_DE;
 
         TRACE("data from MTS       DevNum = %04X\n", dev->devnum);
         dumpdata("", iobuf, (count < 96 ? count : 96));
@@ -282,39 +303,25 @@ char            buf[64];
             for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
             cb_ptr->read_q[i] = FINISHED;
 
-            *unitstat = CSW_CE | CSW_DE;
+        }
+        else if ( cb_ptr->state == CONNECTED && buff_ptr->him_hdr.rnr_flag )
+        {
+            /* FD_CLR(cb_ptr->sock, readfds); */
+            TRACE("-----  RNR Flag = ON received.\n");
+
+            cb_ptr->watch_sock = 0;
+            cb_ptr->rnr = 1;
+            *unitstat |= CSW_UX;
 
         }
-        else if ( ntohs( buff_ptr->him_hdr.buffer_length ) == 0 ) /* OOB information */
+        else if ( cb_ptr->rnr && !buff_ptr->him_hdr.rnr_flag )
         {
-            if ( buff_ptr->him_hdr.rnr_flag )
-            {
-                if ( cb_ptr->state == CONNECTED )
-                {
-                    TRACE("-----  RNR Flag = ON received.\n");
-                    cb_ptr->watch_sock = 0;
+            /* FD_SET(cb_ptr->sock, readfds); */
+            TRACE("-----  RNR Flag = OFF received.\n");
 
-                    cb_ptr->rnr = 1;
-                    *unitstat = CSW_CE | CSW_DE | CSW_UX;
-                }
-                else
-                {
-                    TRACE("-----  RNR Flag = ON, but IGNORED.\n");
-                    *unitstat = CSW_CE | CSW_DE;
-                }
+            start_sock_thread(dev);
+            cb_ptr->rnr = 0;
 
-            }
-            else if ( ( cb_ptr->rnr || cb_ptr->state == CLOSING) && !buff_ptr->him_hdr.rnr_flag )
-            {
-                /* FD_SET(cb_ptr->sock, readfds); */
-                TRACE("-----  RNR Flag = OFF received.\n");
-
-                start_sock_thread(dev);
-
-                cb_ptr->rnr = 0;
-                *unitstat = CSW_CE | CSW_DE;
-
-            }
         }
         else if ( buff_ptr->him_hdr.init_flag )
         {
@@ -329,7 +336,7 @@ char            buf[64];
             cb_ptr->read_q[i] = CONFIG;
             memcpy(dev->buf, iobuf, readlen);
 
-            *unitstat = CSW_CE | CSW_DE | CSW_ATTN;
+            *unitstat |= CSW_ATTN;
 
         }
         else if ( cb_ptr->protocol == IPPROTO_UDP )
@@ -342,11 +349,8 @@ char            buf[64];
  
                 if (sendto(cb_ptr->sock, &((char *) buff_ptr)[32],
                     writelen, 0, (struct sockaddr *)&cb_ptr->sin, sizeof(struct sockaddr_in)) < 0)
-                    TRACE("sendto");
-
-                *unitstat = CSW_CE | CSW_DE;
+                    TRACE("sendto\n");
             }
-
         }
         else           /* must be a TCP packet */
         {
@@ -372,7 +376,7 @@ char            buf[64];
                 for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
                 cb_ptr->read_q[i] = MSS;
 
-                *unitstat = CSW_CE | CSW_DE | CSW_ATTN;
+                *unitstat |= CSW_ATTN;
 
             }
             else if (ntohs( buff_ptr->him_hdr.buffer_length ) > 4)
@@ -390,9 +394,6 @@ char            buf[64];
                     {
                         i = write(cb_ptr->sock, &((char *) buff_ptr)[offset], writelen);
 
-                        if ( writelen == 1460 )
-                            cb_ptr->watch_sock = 0;
- 
                         window = ntohs( cb_ptr->mts_header.sh.tcp_header.th_win );
                         ack_seq = ntohl( cb_ptr->mts_header.sh.tcp_header.th_ack );
 
@@ -409,21 +410,11 @@ char            buf[64];
                     {
                         for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
                         cb_ptr->read_q[i] = FIN;
-                        /* cb_ptr->state = CLOSING; */
-
-                        for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
-                        cb_ptr->read_q[i] = FINISHED;
-
                     }
-                    else
-                    {
-                        for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
-                        cb_ptr->read_q[i] = FINISHED;
 
-                    }
+                    for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
+                    cb_ptr->read_q[i] = FINISHED;
                 }
-
-                *unitstat = CSW_CE | CSW_DE;
             }
         }
  
@@ -438,6 +429,8 @@ char            buf[64];
     /*---------------------------------------------------------------*/
 
         readlen = 0;
+        *residual = count;
+        *unitstat = CSW_CE | CSW_DE;
  
         read_chk.fd = cb_ptr->sock;
         read_chk.events = POLLIN;
@@ -497,32 +490,23 @@ char            buf[64];
 
             }
 
-            if ( cb_ptr->protocol == IPPROTO_TCP && cb_ptr->state == INITIALIZED )
-                start_sock_thread(dev);
-
             /* Remove first entry from queue, a NOP on a closed connection */
             for ( i = 0; i < 15; i++ )
                 cb_ptr->read_q[i] = cb_ptr->read_q[i+1];
 
-            *residual = count - readlen;
-            *unitstat = CSW_CE | CSW_DE;
+            *residual -= readlen;
 
         }
         else if ( cb_ptr->state == CLOSING )
         {
-            *residual = count;
-            *unitstat = CSW_CE | CSW_DE | CSW_UX;
+            *unitstat |= CSW_UX;
 
             TRACE(" ------ READ ccw, STATE = CLOSING\n");
 
         }
-        else if ( !poll(&read_chk, 1, 50) )  /* i.e. no data available from the socket */
+        else if ( !poll(&read_chk, 1, 10) )  /* i.e. no data available from the socket */
         {
-            if ( !cb_ptr->watch_sock )
-                start_sock_thread(dev);
-
-            *residual = count;
-            *unitstat = CSW_CE | CSW_DE | CSW_UX;
+            *unitstat |= CSW_UX;
 
         }
         else if ( cb_ptr->protocol == IPPROTO_UDP )
@@ -541,8 +525,7 @@ char            buf[64];
             buff_ptr->ip_header.ip_src = cb_ptr->sin.sin_addr;
             buff_ptr->sh.udp_header.uh_sport = cb_ptr->sin.sin_port;
 
-            *residual = count - (readlen + 32);
-            *unitstat = CSW_CE | CSW_DE;
+            *residual -= readlen + 32;
 
         }
         else if ( cb_ptr->passive && cb_ptr->state == INITIALIZED )
@@ -557,8 +540,7 @@ char            buf[64];
             cb_ptr->mts_header.ip_header.ip_src = cb_ptr->sin.sin_addr;
             cb_ptr->mts_header.sh.tcp_header.th_sport = cb_ptr->sin.sin_port;
 
-            *residual = count - return_mss( cb_ptr, (struct packet_hdr *) iobuf );
-            *unitstat = CSW_CE | CSW_DE;
+            *residual -= return_mss( cb_ptr, (struct packet_hdr *) iobuf );
 
             TRACE("just accepted call on socket %d for socket %d\n", temp_sock, cb_ptr->sock);
 
@@ -579,16 +561,17 @@ char            buf[64];
                 buff_ptr->him_hdr.buffer_length =
                     buff_ptr->ip_header.ip_len = htons( readlen + 40 );
 
-                *residual = count - (readlen + 44);
-                *unitstat = CSW_CE | CSW_DE;
+                *residual -= readlen + 44;
 
             }
             else if (readlen == 0) {
                 buff_ptr->sh.tcp_header.th_flags |= TH_FIN;
                 cb_ptr->state = CLOSING;
 
-                *residual = count - 44;
-                *unitstat = CSW_CE | CSW_DE;
+                for ( i = 0; cb_ptr->read_q[i] != EMPTY; i++ ) ;
+                cb_ptr->read_q[i] = FINISHED;
+
+                *residual -= 44;
 
             }
             else {
@@ -597,18 +580,20 @@ char            buf[64];
                 dumpdata("I/O cb", (BYTE *)cb_ptr, sizeof(struct io_cb));
  
                 buff_ptr->sh.tcp_header.th_flags |= TH_RST;
-                *residual = count - 44;
-                *unitstat = CSW_CE | CSW_DE | CSW_UC;
+                *residual -= 44;
+                *unitstat |= CSW_UC;
 
             }
         }
         else
         {
-            *residual = count;
-            *unitstat = CSW_CE | CSW_DE | CSW_UX;
+            *unitstat |= CSW_UX;
 
-            TRACE(" ------ Unexpected READ ccw, STATE = %d\n", cb_ptr->state);
+            TRACE("READ ccw, STATE = %d\n", cb_ptr->state);
         }
+
+        if ( cb_ptr->state != SHUTDOWN && !cb_ptr->watch_sock )
+            start_sock_thread(dev);
 
         if ( *residual != count) /* i.e. we are returning data */
         {
@@ -621,13 +606,46 @@ char            buf[64];
         break;
 
 
-    case 0x03:
     case 0x1B:
+    /*---------------------------------------------------------------*/
+    /* CONTROL                                                       */
+    /*---------------------------------------------------------------*/
+
+        *residual = 0;
+        *unitstat = CSW_CE | CSW_DE;
+        break;
+
+
+    case 0x03:
     case 0x4B:
     /*---------------------------------------------------------------*/
     /* CONTROL NO-OPERATION                                          */
     /*---------------------------------------------------------------*/
 
+        *residual = 0;
+        *unitstat = CSW_CE | CSW_DE;
+        break;
+
+
+    case 0x2B:
+    /*---------------------------------------------------------------*/
+    /* CONTROL WAIT, FOR REALLY LONG TIME                            */
+    /*---------------------------------------------------------------*/
+
+        /* Wait for a really long time, as in several minutes */
+        /* Used for testing HALT device entry point           */
+
+        for ( i = 1; i < 120; i++ )
+        {
+            sleep (1);
+            if ( cb_ptr->unused_0 )
+                break;
+
+        }
+
+        cb_ptr->unused_0 = 0;
+        TRACE("------- Exited CONTROL-WAIT after %d seconds\n", i);
+ 
         *residual = 0;
         *unitstat = CSW_CE | CSW_DE;
         break;
@@ -703,7 +721,7 @@ DEVHND him_device_hndinfo = {
         NULL,                          /* Device End channel pgm     */
         NULL,                          /* Device Resume channel pgm  */
         NULL,                          /* Device Suspend channel pgm */
-        NULL,                          /* Device Halt channel pgm    */
+        &him_halt_device,              /* Device Halt channel pgm    */
         NULL,                          /* Device Read                */
         NULL,                          /* Device Write               */
         NULL,                          /* Device Query used          */
@@ -1071,42 +1089,19 @@ static void* skt_thread (DEVBLK* dev)
 
     read_chk.fd = ((struct io_cb *)dev->dev_data)->sock;
     read_chk.events = POLLIN;
-    poll_timer = 20;       /* milliseconds */
-    sleep_timer = 20000;   /* microseconds */
+    poll_timer = 10;       /* milliseconds */
+    sleep_timer = 10000;   /* microseconds */
 
     while ( ((struct io_cb *)dev->dev_data)->watch_sock )
-        if ( !((struct io_cb *)dev->dev_data)->rnr && poll(&read_chk, 1, poll_timer) > 0 
-           && (read_chk.revents & POLLIN) )
+        if ( !((struct io_cb *)dev->dev_data)->rnr && poll(&read_chk, 1, poll_timer) > 0 )
         {
-            TRACE(" ----- Status available from socket, REVENTS = %04X\n", read_chk.revents);
             rc = device_attention (dev, CSW_ATTN);
+            ((struct io_cb *)dev->dev_data)->watch_sock = 0;
             break;
         }
         else
             usleep( sleep_timer );
 
-/*
-    while ( ((struct io_cb *)dev->dev_data)->watch_sock && poll_timer < 32000)
-        if ( !((struct io_cb *)dev->dev_data)->rnr && poll(&read_chk, 1, poll_timer) > 0 )
-        {
-            rc = device_attention (dev, CSW_ATTN);
-            poll_timer = 20;
-            sleep_timer = 20000;
-        }
-        else
-        {
-            usleep( sleep_timer );
-
-            if ( !((struct io_cb *)dev->dev_data)->rnr )   * Still no data, lengthen wait *
-            {
-                poll_timer *= 2;
-                sleep_timer *= 2;
-            }
-        }
-
-    if ( poll_timer > 32000 )
-        TRACE("----- Poll timer TIMEOUT, should probably close connection\n");
-*/
 
     /* obtain_lock( &dev->lock );
 
