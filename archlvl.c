@@ -1,7 +1,5 @@
-/* ARCHLVL.C    (c) Copyright Jan Jaeger,   2010-2011                */
+/* ARCHLVL.C    (c) Copyright Jan Jaeger,   2010-2012                */
 /*                                                                   */
-
-// $Id$
 
 #include "hstdinc.h"
 
@@ -274,7 +272,7 @@ FACILITY(LOGICAL_PARTITION,S370|ESA390|ZARCH, NONE, S370|ESA390|ZARCH, ALS0|ALS1
 FACILITY(VIRTUAL_MACHINE,  NONE,         NONE,      S370|ESA390|ZARCH, NONE)
 #endif
 // #if defined(_FEATURE_QDIO_ASSIST)
-FACILITY(QDIO_ASSIST,      Z390,         NONE,      Z390,          ALS3)         
+FACILITY(QDIO_ASSIST,      NONE,         NONE,      Z390,          ALS3)         
 // #endif
 
 { NULL, 0, 0, 0, 0, 0 }

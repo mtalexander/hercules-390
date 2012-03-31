@@ -1,14 +1,12 @@
-/* ESA390.H     (c) Copyright Roger Bowler, 1994-2011                */
+/* ESA390.H     (c) Copyright Roger Bowler, 1994-2012                */
 /*              ESA/390 Data Areas                                   */
 /*                                                                   */
 /*   Released under "The Q Public License Version 1"                 */
 /*   (http://www.hercules-390.org/herclic.html) as modifications to  */
 /*   Hercules.                                                       */
 
-/* Interpretive Execution - (c) Copyright Jan Jaeger, 1999-2009      */
-/* z/Architecture support - (c) Copyright Jan Jaeger, 1999-2009      */
-
-// $Id$
+/* Interpretive Execution - (c) Copyright Jan Jaeger, 1999-2012      */
+/* z/Architecture support - (c) Copyright Jan Jaeger, 1999-2012      */
 
 #ifndef _ESA390_H
 #define _ESA390_H
@@ -1768,6 +1766,8 @@ typedef struct _SIE2BK {                /* SIE State Descriptor      */
 #define SIE_C_VALIDITY    32            /* Validity                  */
 #define SIE_C_STOPREQ     40            /* Stop request              */
 #define SIE_C_OPEREXC     44            /* Operation Exception       */
+#define SIE_C_IOINT       60            /* I/O Interruption          */
+#define SIE_C_IOINST      64            /* I/O Instruction           */
 #define SIE_C_EXP_RUN     68            /* Expedited Run Intercept   */
 #define SIE_C_EXP_TIMER   72            /* Expedited Timer Intercept */
 /*051*/ BYTE  f;                        /* Interception Status       */

@@ -1,6 +1,6 @@
-/* CMDTAB.H     (c) Copyright Roger Bowler, 1999-2011                */
-/*              (c) Copyright "Fish" (David B. Trout), 2002-2009     */
-/*              (c) Copyright Jan Jaeger, 2003-2009                  */
+/* CMDTAB.H     (c) Copyright Roger Bowler, 1999-2012                */
+/*              (c) Copyright "Fish" (David B. Trout), 2002-2012     */
+/*              (c) Copyright Jan Jaeger, 2003-2012                  */
 /*              (c) Copyright TurboHercules, SAS 2010-2011           */
 /*              Defines all Hercules Configuration statements        */
 /*              and panel commands                                   */
@@ -8,8 +8,6 @@
 /*   Released under "The Q Public License Version 1"                 */
 /*   (http://www.hercules-390.org/herclic.html) as modifications to  */
 /*   Hercules.                                                       */
-
-// $Id$
 
 /*-------------------------------------------------------------------*/
 /*              Command descriptions and help text                   */
@@ -997,38 +995,47 @@
 
 #if defined(ENABLE_OBJECT_REXX) || defined(ENABLE_REGINA_REXX)
 #if defined(ENABLE_OBJECT_REXX) && defined(ENABLE_REGINA_REXX)
-#define rexx_cmd_desc           "Enable/Disable/display Rexx interpreter settings"
+#define rexx_cmd_desc           "Modify/Display Rexx interpreter settings"
 #define rexx_cmd_help           \
                                 \
-  "Format: 'rexx [option parms]'\n"                                              \
-  "<none>           - display rexx status\n"                                     \
-  "sta[rt]/ena[ble] - enable rexx \n"                                            \
-  "parms            - package name oorexx/regina\n"                              \
-  "                 - <none> will start/enable the default Rexx package\n"       \
-  "stop[p]/disa[ble]- stop/disable rexx support\n"                               \
-  "parms            - <none>\n"                                                  \
+  "Format: 'rexx [option [parms]]'\n"                                            \
+  "<none>             - display rexx status\n"                                   \
+  "ena[ble]/sta[rt]   - enable/start rexx \n"                                    \
+  "                   - package name oorexx/regina\n"                            \
+  "                   - <none> will enable/start the default Rexx interpreter\n" \
+  "disa[ble]/sto[p]   - disable/stop rexx support\n"                             \
   "\n"                                                                           \
-  "Path[s]          - where to find rexx scripts\n"                              \
-  "Ext[ensions]     - what extensions to use for rexx scripts autodetect \n"     \
-  "Suf[fixes]       - same as above\n"                                           \
-  "Msgl[evel]       - 0/1 disable/enable HHC17503I and HHC17504I messages \n"    \
-  "Msgp[refix]      - set the prefix for normal messages\n"                      \
-  "Errp[refix]      - set the prefix for trace/error messages\n"                 \
+  "Path[s]/Rexxp[aths]- where to find rexx scripts\n"                            \
+  "Sysp[ath]          - extend the search to the System paths\n"                 \
+  "                   - on/off\n"                                                \
+  "Ext[ensions]       - what extensions to use for rexx scripts autodetect \n"   \
+  "Suf[fixes]         - same as above\n"                                         \
+  "                   - a search for no extension will ALWAYS be done \n"        \
+  "Resolv[er]         - on, hercules will resolve the script full path\n"        \
+  "                   - off, the script name will be passed as is\n"             \
+  "Msgl[evel]         - 0/1 disable/enable HHC17503I and HHC17504I messages \n"  \
+  "Msgp[refix]        - set the prefix for normal messages\n"                    \
+  "Errp[refix]        - set the prefix for trace/error messages\n"               \
   "\n"                                                                           \
   "using reset as parameter will reset the above settings to the defaults\n"
 #else /* defined(ENABLE_OBJECT_REXX) && defined(ENABLE_REGINA_REXX) */
 #define rexx_cmd_desc           "display Rexx interpreter settings"
 #define rexx_cmd_help           \
                                 \
-  "Format: 'rexx [option parms]'\n"                                              \
-  "<none>           - display rexx status\n"                                     \
+  "Format: 'rexx [option [parms]]'\n"                                            \
+  "<none>             - display rexx status\n"                                   \
   "\n"                                                                           \
-  "Path[s]          - where to find rexx scripts\n"                              \
-  "Ext[ensions]     - what extensions to use for rexx scripts autodetect \n"     \
-  "Suf[fixes]       - same as above\n"                                           \
-  "Msgl[evel]       - 0/1 disable/enable HHC17503I and HHC17504I messages \n"    \
-  "Msgp[refix]      - set the prefix for normal messages\n"                      \
-  "Errp[refix]      - set the prefix for trace/error messages\n"                 \
+  "Path[s]/Rexxp[aths]- where to find rexx scripts\n"                            \
+  "Sysp[ath]          - extend the search to the System paths\n"                 \
+  "                   - on/off\n"                                                \
+  "Ext[ensions]       - what extensions to use for rexx scripts autodetect \n"   \
+  "Suf[fixes]         - same as above\n"                                         \
+  "                   - a search for no extension will ALWAYS be done \n"        \
+  "Resolv[er]         - on, hercules will resolve the script full path\n"        \
+  "                   - off, the script name will be passed as is\n"             \
+  "Msgl[evel]         - 0/1 disable/enable HHC17503I and HHC17504I messages \n"  \
+  "Msgp[refix]        - set the prefix for normal messages\n"                    \
+  "Errp[refix]        - set the prefix for trace/error messages\n"               \
   "\n"                                                                           \
   "using reset as parameter will reset the above settings to the defaults\n"
 #endif /* defined(ENABLE_OBJECT_REXX) && defined(ENABLE_REGINA_REXX) */
