@@ -93,8 +93,8 @@ dyndev_SRC         = commadpt.c  \
                      tuntap.c    \
                      resolve.c   \
                      qeth.c      \
-                     con1052c.c  \
-                     him.c
+                     him.c       \
+                     con1052c.c
 
 
 # -module         : create a dlopen'able module
@@ -167,9 +167,9 @@ endif
              hdt2880.la  \
              hdt3525.la  \
              hdtqeth.la  \
+             hdttcph.la  \
              hdt1052c.la \
-             hdtptp.la   \
-             hdttcph.la
+             hdtptp.la
 
 if OPTION_DYNAMIC_LOAD
   modexec_LTLIBRARIES = $(HERCMODS)
@@ -260,6 +260,10 @@ if OPTION_DYNAMIC_LOAD
   hdtqeth_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdtqeth_la_LIBADD  = $(DYNMOD_LD_ADD)
 
+  hdttcph_la_SOURCES = him.c
+  hdttcph_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
+  hdttcph_la_LIBADD  = $(DYNMOD_LD_ADD)
+
   hdt1052c_la_SOURCES = con1052c.c
   hdt1052c_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdt1052c_la_LIBADD  = $(DYNMOD_LD_ADD)
@@ -267,10 +271,6 @@ if OPTION_DYNAMIC_LOAD
   hdtptp_la_SOURCES  = resolve.c ctc_ptp.c w32ctca.c tuntap.c
   hdtptp_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
   hdtptp_la_LIBADD   = $(DYNMOD_LD_ADD)
-
-  hdttcph_la_SOURCES  = him.c
-  hdttcph_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
-  hdttcph_la_LIBADD   = $(DYNMOD_LD_ADD)
 
 endif
 
@@ -458,9 +458,9 @@ else
              -dlopen hdt3505.la   \
              -dlopen hdt3525.la   \
              -dlopen hdtqeth.la   \
+             -dlopen hdttcph.la   \
              -dlopen hdt1052c.la  \
-             -dlopen hdtptp.la    \
-             -dlopen hdttcph.la
+             -dlopen hdtptp.la
 
   HDEPS    = dyngui.la    \
              dyninst.la   \
@@ -475,12 +475,12 @@ else
              hdt3505.la   \
              hdt3525.la   \
              hdtqeth.la   \
+             hdttcph.la   \
              hdt1052c.la  \
              hdtptp.la    \
              libherc.la   \
              libherct.la  \
-             libhercd.la  \
-             hdttcph.la
+             libhercd.la
 endif
 
 else
