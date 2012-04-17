@@ -175,6 +175,7 @@
 /machchk.lo
 /makefile
 /memrchr.lo
+/mpc.lo
 /msvc.AMD64.bin
 /msvc.AMD64.map
 /msvc.AMD64.obj
@@ -212,6 +213,7 @@
 /stamp-h.in
 /stamp-h1
 /strsignal.lo
+/tags
 /tapeccws.lo
 /tapecopy
 /tapedev.lo

@@ -15,7 +15,7 @@ SUBDIRS = decNumber m4 po util html man . crypto
 
 LDADD = @LTLIBICONV@ @LTLIBINTL@ @LIBS@
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/decNumber
+AM_CPPFLAGS = -I$(top_\srcdir) -I$(top_srcdir)/decNumber
 
 if BUILD_HERCIFC
   HERCIFC = hercifc
@@ -94,6 +94,7 @@ dyndev_SRC         = commadpt.c  \
                      resolve.c   \
                      qeth.c      \
                      him.c       \
+                     mpc.c       \
                      con1052c.c
 
 
@@ -256,7 +257,7 @@ if OPTION_DYNAMIC_LOAD
   hdt3525_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdt3525_la_LIBADD  = $(DYNMOD_LD_ADD)
 
-  hdtqeth_la_SOURCES = qeth.c tuntap.c
+  hdtqeth_la_SOURCES = qeth.c mpc.c tuntap.c
   hdtqeth_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdtqeth_la_LIBADD  = $(DYNMOD_LD_ADD)
 
@@ -268,7 +269,7 @@ if OPTION_DYNAMIC_LOAD
   hdt1052c_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdt1052c_la_LIBADD  = $(DYNMOD_LD_ADD)
 
-  hdtptp_la_SOURCES  = resolve.c ctc_ptp.c w32ctca.c tuntap.c
+  hdtptp_la_SOURCES  = ctc_ptp.c mpc.c resolve.c w32ctca.c tuntap.c
   hdtptp_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
   hdtptp_la_LIBADD   = $(DYNMOD_LD_ADD)
 
@@ -743,6 +744,8 @@ noinst_HEADERS = fishhang.h     \
                  service.h      \
                  chsc.h         \
                  qeth.h         \
+                 qdio.h         \
+                 mpc.h          \
                  pttrace.h      \
                  history.h      \
                  sr.h           \
