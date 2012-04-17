@@ -272,8 +272,11 @@ FACILITY(LOGICAL_PARTITION,S370|ESA390|ZARCH, NONE, S370|ESA390|ZARCH, ALS0|ALS1
 FACILITY(VIRTUAL_MACHINE,  NONE,         NONE,      S370|ESA390|ZARCH, NONE)
 #endif
 // #if defined(_FEATURE_QDIO_ASSIST)
-FACILITY(QDIO_ASSIST,      NONE,         NONE,      Z390,          ALS3)         
+FACILITY(QDIO_ASSIST,      NONE,         NONE,      Z390,          ALS3)
 // #endif
+#if defined(_FEATURE_INTERVAL_TIMER)
+FACILITY(INTERVAL_TIMER,   S370|ESA390|ZARCH, ESA390|ZARCH, S370|ESA390|ZARCH, ALS0|ALS1|ALS2|ALS3)
+#endif
 
 { NULL, 0, 0, 0, 0, 0 }
 };
@@ -335,6 +338,21 @@ ARCHTAB *tb;
 }
 
 
+static char *get_facname(int bitno)
+{
+FACTAB *tb;
+static char name[8];
+
+    for(tb = factab; tb->name; tb++)
+        if(bitno == tb->bitno)
+            return (char *)tb->name;
+
+    snprintf(name,sizeof(name),"bit%d",bitno);
+
+    return name;
+}
+
+
 static FACTAB *get_factab(char *name)
 {
 FACTAB *tb;
@@ -365,9 +383,7 @@ ARCHTAB *tb;
 static void force_facbit(int bitno, int enable, BYTE mode)
 {
 int fbyte, fbit;
-char sbitno[32];
 
-    MSGBUF(sbitno, "%d", bitno);
     fbyte = bitno / 8;
     fbit = 0x80 >> (bitno % 8);
 
@@ -379,7 +395,7 @@ char sbitno[32];
             {
                 sysblk.facility_list[ARCH_370][fbyte] |= fbit;
                 if(MLVL(VERBOSE))
-                    logmsg(MSG(HHC00898, "I", sbitno, "en", _ARCH_370_NAME));
+                    logmsg(MSG(HHC00898, "I", get_facname(bitno), "en", _ARCH_370_NAME));
             }
 #endif
 #if defined(_390)
@@ -388,7 +404,7 @@ char sbitno[32];
             {
                 sysblk.facility_list[ARCH_390][fbyte] |= fbit;
                 if(MLVL(VERBOSE))
-                    logmsg(MSG(HHC00898, "I", sbitno, "en", _ARCH_390_NAME));
+                    logmsg(MSG(HHC00898, "I", get_facname(bitno), "en", _ARCH_390_NAME));
             }
 #endif
 #if defined(_900)
@@ -397,7 +413,7 @@ char sbitno[32];
             {
                 sysblk.facility_list[ARCH_900][fbyte] |= fbit;
                 if(MLVL(VERBOSE))
-                    logmsg(MSG(HHC00898, "I", sbitno, "en", _ARCH_900_NAME)); 
+                    logmsg(MSG(HHC00898, "I", get_facname(bitno), "en", _ARCH_900_NAME)); 
             }
 #endif
     }
@@ -409,7 +425,7 @@ char sbitno[32];
             {
                 sysblk.facility_list[ARCH_370][fbyte] &= ~fbit;
                 if(MLVL(VERBOSE))
-                    logmsg(MSG(HHC00898, "I", sbitno, "dis", _ARCH_370_NAME));
+                    logmsg(MSG(HHC00898, "I", get_facname(bitno), "dis", _ARCH_370_NAME));
             }
 #endif
 #if defined(_390)
@@ -418,7 +434,7 @@ char sbitno[32];
             {
                 sysblk.facility_list[ARCH_390][fbyte] &= ~fbit;
                 if(MLVL(VERBOSE))
-                    logmsg(MSG(HHC00898, "I", sbitno, "dis", _ARCH_390_NAME));
+                    logmsg(MSG(HHC00898, "I", get_facname(bitno), "dis", _ARCH_390_NAME));
             }
 #endif
 #if defined(_900)
@@ -427,7 +443,7 @@ char sbitno[32];
             {
                 sysblk.facility_list[ARCH_900][fbyte] &= ~fbit;
                 if(MLVL(VERBOSE))
-                    logmsg(MSG(HHC00898, "I", sbitno, "dis", _ARCH_900_NAME));
+                    logmsg(MSG(HHC00898, "I", get_facname(bitno), "dis", _ARCH_900_NAME));
             }
 #endif
     }
@@ -528,6 +544,8 @@ static int update_archlvl(int argc, char *argv[])
 FACTAB *tb;
 ARCHTAB *ab;
 int enable;
+int bitno;
+char c;
 const BYTE arch2als[] = {
 #if defined(_370)
  S370
@@ -573,46 +591,7 @@ BYTE als =
     if( CMD(argv[1],disable,4) )
         enable = FALSE;
     else
-    {
-    int bitno;
-    char c;
-
-        if( CMD(argv[1],forceon,7) )
-            enable = TRUE;
-        else
-        if( CMD(argv[1],forceoff,8) )
-            enable = FALSE;
-        else
-            return -1;
-
-        if(argc < 3) 
-        {
-            logmsg(MSG(HHC00892, "E"));
-            return 0;
-        }
-
-        if( (sscanf( argv[2], "%d%c", &bitno, &c ) != 1) 
-          || bitno < 0 || bitno > STFL_HMAX)
-        {
-            logmsg(MSG(HHC00893, "E", argv[2])); 
-            return -1;
-        }
-        else
-        {
-            if(argc == 4)
-            {
-                if(!(ab = get_archtab(argv[3])))
-                {
-                    logmsg(MSG(HHC00895, "E", argv[3]));
-                    return 0;
-                }
-                als = arch2als[ab->archmode];
-            }
-
-            force_facbit(bitno,enable,als);
-            return 0;
-        }
-    }
+        return -1;
 
     if(argc < 3) 
     {
@@ -632,6 +611,11 @@ BYTE als =
 
     if((tb = get_factab(argv[2])))
         set_facility(tb, enable, als );
+    else
+    if(!strncasecmp("bit",argv[2],3)
+      && sscanf( argv[2]+3, "%d%c", &bitno, &c ) == 1
+      && bitno >= 0 && bitno <= STFL_HMAX)
+        force_facbit(bitno,enable,als);
     else
         logmsg(MSG(HHC00893, "E", argv[2])); 
 
@@ -675,8 +659,8 @@ int archlvl_cmd(int argc, char *argv[], char *cmdline)
 
     if( CMD(argv[1],query,1) )
     {
-        FACTAB *tb;
-        int     fcnt = 0;
+    FACTAB *tb;
+    int     fcnt = 0;
 
         if ( argc > 3 )
         {
@@ -686,7 +670,7 @@ int archlvl_cmd(int argc, char *argv[], char *cmdline)
 
         for(tb = factab; tb->name; tb++)
         {
-            int fbyte, fbit;
+        int fbyte, fbit;
     
             fbyte = tb->bitno / 8;
             fbit = 0x80 >> (tb->bitno % 8);
@@ -700,10 +684,28 @@ int archlvl_cmd(int argc, char *argv[], char *cmdline)
             }
         }
 
-        if ( fcnt == 0 )
+        if (!fcnt)
         {
-            logmsg(MSG(HHC00891, "E"));
-            return -1;
+        int     bitno;
+        char    c;
+
+            if(!strncasecmp("bit",argv[2],3) 
+              && sscanf(argv[2]+3,"%d%c",&bitno, &c) == 1 
+              && bitno >= 0 && bitno <= STFL_HMAX)
+            {
+            int fbyte, fbit;
+    
+                fbyte = bitno / 8;
+                fbit = 0x80 >> (bitno % 8);
+                logmsg(MSG(HHC00890, "I", get_facname(bitno),
+                       sysblk.facility_list[sysblk.arch_mode][fbyte] & fbit
+                        ? "En" : "Dis"));
+            }
+            else
+            {
+                logmsg("HHC00891 Facility %s not found\n",argv[2]);
+                return -1;
+            }
         }
         
         return 0;

@@ -302,7 +302,7 @@ static inline void set_ecps_vtimer(REGS *regs, S32 vtimer)
 #endif /*defined(_FEATURE_ECPSVM)*/
 
 
-S32 int_timer(REGS *regs)
+static inline S32 int_timer(REGS *regs)
 {
     return (S32)TOD_TO_ITIMER((S64)(regs->int_timer - hw_clock()));
 }
@@ -325,6 +325,7 @@ int pending = 0;
     {
         ON_IC_ITIMER(regs);
         pending = 1;
+        regs->old_timer=itimer;
     }
 #if defined(_FEATURE_ECPSVM)
     if(regs->ecps_vtmrpt)
@@ -613,7 +614,7 @@ int clock_hresume(void *file)
 
 
 #if defined(FEATURE_INTERVAL_TIMER)
-static void ARCH_DEP(_store_int_timer_2) (REGS *regs,int getlock)
+static inline void ARCH_DEP(_store_int_timer_2) (REGS *regs,int getlock)
 {
 S32 itimer;
 S32 vtimer=0;
@@ -650,14 +651,7 @@ S32 vtimer=0;
     }
 #endif /*defined(FEATURE_ECPSVM)*/
 
-    /* ISW : Invoke chk_int_timer *before* setting old_timer */
-    /*       however, the value must be one fetched *before* */
-    /*       chk_int_timer was invoked otherwise a window    */
-    /*       exists during which the interval timer could go */
-    /*       negative undetected                             */
-
     chk_int_timer(regs);
-    regs->old_timer = itimer;
 #if defined(FEATURE_ECPSVM)
     if(regs->ecps_vtmrpt)
     {

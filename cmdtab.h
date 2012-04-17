@@ -410,11 +410,11 @@
   "This command is deprecated. Use \"ecpsvm\" instead.\n"
 
 #if defined(ENABLE_OBJECT_REXX) || defined(ENABLE_REGINA_REXX)
-#define exec_cmd_desc           "Execute a REXX script"
+#define exec_cmd_desc           "Execute a Rexx script"
 #define exec_cmd_help           \
                                 \
   "Format: \"exec rexx_exec [args...]\" where 'rexx_exec' is the name of\n"      \
-  "the REXX script, and 'args' are arguments (separated by spaces) to be\n"      \
+  "the Rexx script, and 'args' are arguments (separated by spaces) to be\n"      \
   "passed to the script.\n"
 #endif /* defined(ENABLE_OBJECT_REXX) || defined(ENABLE_REGINA_REXX) */
 
@@ -1459,11 +1459,15 @@ COMMAND( "traceopt",                traceopt_cmd,           SYSCMDNOPER,        
 COMMAND( "u",                       u_cmd,                  SYSCMDNOPER,        u_cmd_desc,             u_cmd_help          )
 COMMAND( "v",                       v_cmd,                  SYSCMDNOPER,        v_cmd_desc,             v_cmd_help          )
 
+#if 0 // Changing directory on the fly will invalidate all relative filenames in the configuration that have not yet been opened
 COMMAND( "cd",                      cd_cmd,                 SYSCMDNDIAG8,       cd_cmd_desc,            NULL                )
+#endif
 COMMAND( "i",                       i_cmd,                  SYSCMDNDIAG8,       i_cmd_desc,             NULL                )
 COMMAND( "ipl",                     ipl_cmd,                SYSCMDNDIAG8,       ipl_cmd_desc,           ipl_cmd_help        )
 COMMAND( "iplc",                    iplc_cmd,               SYSCMDNDIAG8,       iplc_cmd_desc,          iplc_cmd_help       )
+#if 0
 COMMAND( "pwd",                     pwd_cmd,                SYSCMDNDIAG8,       pwd_cmd_desc,           NULL                )
+#endif
 COMMAND( "restart",                 restart_cmd,            SYSCMDNDIAG8,       restart_cmd_desc,       NULL                )
 COMMAND( "ext",                     ext_cmd,                SYSCMDNDIAG8,       ext_cmd_desc,           NULL                )
 COMMAND( "startall",                startall_cmd,           SYSCMDNDIAG8,       startall_cmd_desc,      NULL                )
