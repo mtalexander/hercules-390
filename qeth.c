@@ -1127,7 +1127,7 @@ OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 static int qeth_init_handler ( DEVBLK *dev, int argc, char *argv[] )
 {
 OSA_GRP *grp;
-int grouped;
+int grouped = FALSE;
 int i;
 
     if(!dev->group)
