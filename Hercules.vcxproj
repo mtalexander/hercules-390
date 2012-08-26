@@ -371,6 +371,14 @@
     <ClCompile Include="cckddiag.c" />
     <ClCompile Include="cckdfix.c" />
     <ClCompile Include="cckdswap.c" />
+    <ClCompile Include="cmpsctst.c" />
+    <ClCompile Include="cmpsctst_cmpsc.c" />
+    <ClCompile Include="cmpsctst_cmpsc_2012.c" />
+    <ClCompile Include="cmpsctst_cmpscdbg.c" />
+    <ClCompile Include="cmpsctst_cmpscdct.c" />
+    <ClCompile Include="cmpsctst_cmpscget.c" />
+    <ClCompile Include="cmpsctst_cmpscmem.c" />
+    <ClCompile Include="cmpsctst_cmpscput.c" />
     <ClCompile Include="conspawn.c" />
     <ClCompile Include="dasdcat.c" />
     <ClCompile Include="dasdconv.c" />
@@ -463,7 +471,6 @@
     <ClCompile Include="esame.c" />
     <ClCompile Include="external.c" />
     <ClCompile Include="fillfnam.c" />
-    <ClCompile Include="fishhang.c" />
     <ClCompile Include="float.c" />
     <ClCompile Include="fthreads.c" />
     <ClCompile Include="general1.c" />
@@ -508,7 +515,10 @@
     <ClCompile Include="plo.c" />
     <ClCompile Include="pttrace.c" />
     <ClCompile Include="qdio.c" />
-    <ClCompile Include="rexx.c" />
+    <ClCompile Include="mpc.c" />
+    <ClCompile Include="hRexx.c" />
+    <ClCompile Include="hRexx_o.c" />
+    <ClCompile Include="hRexx_r.c" />
     <ClCompile Include="scedasd.c" />
     <ClCompile Include="script.c" />
     <ClCompile Include="service.c" />
@@ -745,9 +755,13 @@
     <None Include="tests\trte.txt" />
     <None Include="herclogo.txt" />
     <None Include="hercules.cnf" />
+    <None Include="cmpsctst.cmd" />
+    <None Include="cmpsctst.rexx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="chain.h" />
+    <ClInclude Include="cmpsctst.h" />
+    <ClInclude Include="cmpsctst_stdinc.h" />
     <ClInclude Include="cnsllogo.h" />
     <ClInclude Include="crypto\aes.h" />
     <ClInclude Include="crypto\des.h" />
@@ -767,6 +781,8 @@
     <ClInclude Include="hdiagf18.h" />
     <ClInclude Include="hercifc.h" />
     <ClInclude Include="qeth.h" />
+    <ClInclude Include="qdio.h" />
+    <ClInclude Include="mpc.h" />
     <ClInclude Include="tt32api.h" />
     <ClInclude Include="tuntap.h" />
     <ClInclude Include="w32ctca.h" />
@@ -799,7 +815,6 @@
     <ClInclude Include="featchk.h" />
     <ClInclude Include="feature.h" />
     <ClInclude Include="fillfnam.h" />
-    <ClInclude Include="fishhang.h" />
     <ClInclude Include="fthreads.h" />
     <ClInclude Include="getopt.h" />
     <ClInclude Include="hbyteswp.h" />
@@ -818,6 +833,8 @@
     <ClInclude Include="hmacros.h" />
     <ClInclude Include="hostinfo.h" />
     <ClInclude Include="hostopts.h" />
+    <ClInclude Include="hRexx.h" />
+    <ClInclude Include="hRexxapi.h" />
     <ClInclude Include="hscutl.h" />
     <ClInclude Include="hsocket.h" />
     <ClInclude Include="hstdinc.h" />

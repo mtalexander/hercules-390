@@ -1,4 +1,6 @@
 /* HSCEMODE.C   (c) Copyright Roger Bowler, 1999-2012                */
+/*              (c) Copyright Jan Jaeger, 1999-2012                  */
+/*              (c) Copyright "Fish" (David B. Trout), 2002-2009     */
 /*              (c) Copyright TurboHercules, SAS 2010-2011           */
 /*              CE mode functions                                    */
 /*                                                                   */
@@ -822,7 +824,7 @@ char range[256];
             return -1;
         }
         if (c[0] == '.')
-            addr[1] += addr[0];
+            addr[1] += addr[0] - 1;
         if (trace)
         {
             sysblk.traceaddr[0] = addr[0];
@@ -855,12 +857,12 @@ char range[256];
         sprintf(range, "range %" I64_FMT "x%c%" I64_FMT "x",
                 sysblk.traceaddr[0], c[0],
                 c[0] != '.' ? sysblk.traceaddr[1] :
-                sysblk.traceaddr[1] - sysblk.traceaddr[0]);
+                sysblk.traceaddr[1] - sysblk.traceaddr[0] + 1);
     else if (!trace && (sysblk.stepaddr[0] != 0 || sysblk.stepaddr[1] != 0))
         sprintf(range, "range %" I64_FMT "x%c%" I64_FMT "x",
                 sysblk.stepaddr[0], c[0],
                 c[0] != '.' ? sysblk.stepaddr[1] :
-                sysblk.stepaddr[1] - sysblk.stepaddr[0]);
+                sysblk.stepaddr[1] - sysblk.stepaddr[0] + 1);
 
     /* Determine if this trace is on or off for message */
     on = (trace && sysblk.insttrace) || (!trace && sysblk.inststep);

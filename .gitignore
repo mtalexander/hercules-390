@@ -1,4 +1,3 @@
-
 # /
 /*.bin
 /*.o
@@ -9,6 +8,7 @@
 /Makefile
 /Makefile.in
 /aclocal.m4
+/altcmpsc.la
 /archlvl.lo
 /assist.lo
 /autogen.log
@@ -34,6 +34,12 @@
 /clock.lo
 /cmdtab.lo
 /cmpsc.lo
+/cmpsc_2012.lo
+/cmpscdbg.lo
+/cmpscdct.lo
+/cmpscget.lo
+/cmpscmem.lo
+/cmpscput.lo
 /codepage.lo
 /comm3705.lo
 /commadpt.lo
@@ -47,6 +53,7 @@
 /configure
 /console.lo
 /control.lo
+cmpsctst
 /cpu.lo
 /crypto.lo
 /ctc_ctci.lo
@@ -131,6 +138,7 @@
 /hdteq.lo
 /hdtptp.la
 /hdtqeth.la
+/hdtzfcp.la
 /hercifc
 /herclin
 /hercules
@@ -200,6 +208,7 @@
 /s37x.lo
 /s37xmod.lo
 /scedasd.lo
+/scescsi.lo
 /script.lo
 /scsitape.lo
 /service.lo
@@ -234,6 +243,7 @@
 /w32util.lo
 /winbuild
 /xstore.lo
+/zfcp.lo
 
 # /hRexx/
 /hRexx.lo

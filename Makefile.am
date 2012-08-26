@@ -15,7 +15,7 @@ SUBDIRS = decNumber m4 po util html man . crypto
 
 LDADD = @LTLIBICONV@ @LTLIBINTL@ @LIBS@
 
-AM_CPPFLAGS = -I$(top_\srcdir) -I$(top_srcdir)/decNumber
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/decNumber
 
 if BUILD_HERCIFC
   HERCIFC = hercifc
@@ -31,19 +31,12 @@ endif
 
 fthreads_SRC  = fthreads.c
 fishio_SRC    = w32chan.c
-fishhang_SRC  = fishhang.c
 
 if BUILD_FTHREADS
   FTHREADS    = $(fthreads_SRC)
   FISHIO      = $(fishio_SRC)
-if BUILD_FISHHANG
-    FISHHANG  = $(fishhang_SRC)
-else
-    FISHHANG  =
-endif
 else
   FTHREADS    =
-  FISHHANG    =
   FISHIO      =
 endif
 
@@ -95,6 +88,7 @@ dyndev_SRC         = commadpt.c  \
                      qeth.c      \
                      him.c       \
                      mpc.c       \
+                     zfcp.c      \
                      con1052c.c
 
 
@@ -168,9 +162,11 @@ endif
              hdt2880.la  \
              hdt3525.la  \
              hdtqeth.la  \
+             hdtzfcp.la  \
              hdttcph.la  \
              hdt1052c.la \
-             hdtptp.la
+             hdtptp.la   \
+             altcmpsc.la
 
 if OPTION_DYNAMIC_LOAD
   modexec_LTLIBRARIES = $(HERCMODS)
@@ -182,7 +178,7 @@ endif
 # The following causes the dyanmic modules to not even get built
 # unless support for building dynamic modules exists on the build system
 
-bin_PROGRAMS = hercules \
+bin_PROGRAMS = cmpsctst hercules \
                dasdinit dasdisup dasdload dasdconv dasdls dasdcat dasdpdsu dasdseq \
                tapecopy tapemap tapesplt \
                cckdcdsk cckdcomp cckddiag cckdswap \
@@ -261,6 +257,10 @@ if OPTION_DYNAMIC_LOAD
   hdtqeth_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdtqeth_la_LIBADD  = $(DYNMOD_LD_ADD)
 
+  hdtzfcp_la_SOURCES = zfcp.c
+  hdtzfcp_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
+  hdtzfcp_la_LIBADD  = $(DYNMOD_LD_ADD)
+
   hdttcph_la_SOURCES = him.c
   hdttcph_la_LDFLAGS = $(DYNMOD_LD_FLAGS)
   hdttcph_la_LIBADD  = $(DYNMOD_LD_ADD)
@@ -272,6 +272,10 @@ if OPTION_DYNAMIC_LOAD
   hdtptp_la_SOURCES  = ctc_ptp.c mpc.c resolve.c w32ctca.c tuntap.c
   hdtptp_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
   hdtptp_la_LIBADD   = $(DYNMOD_LD_ADD)
+
+  altcmpsc_la_SOURCES  = cmpsc_2012.c cmpscdbg.c cmpscdct.c cmpscget.c cmpscmem.c cmpscput.c
+  altcmpsc_la_LDFLAGS  = $(DYNMOD_LD_FLAGS)
+  altcmpsc_la_LIBADD   = $(DYNMOD_LD_ADD)
 
 endif
 
@@ -330,7 +334,6 @@ endif
                         parser.c     \
                         pttrace.c    \
                         $(FTHREADS)  \
-                        $(FISHHANG)  \
                         $(LTDL)
 
   libhercu_la_LDFLAGS = $(LIB_LD_FLAGS)
@@ -369,6 +372,7 @@ endif
                        decimal.c    \
                        service.c    \
                        scedasd.c    \
+                       scescsi.c    \
                        losc.c       \
                        chsc.c       \
                        opcode.c     \
@@ -415,7 +419,6 @@ endif
                        hRexx_r.c
 
   EXTRA_libherc_la_SOURCES = $(fthreads_SRC)  \
-                             $(fishhang_SRC)  \
                              $(fishio_SRC)    \
                              memrchr.c        \
                              $(dynamic_SRC)   \
@@ -459,9 +462,11 @@ else
              -dlopen hdt3505.la   \
              -dlopen hdt3525.la   \
              -dlopen hdtqeth.la   \
+             -dlopen hdtzfcp.la   \
              -dlopen hdttcph.la   \
              -dlopen hdt1052c.la  \
-             -dlopen hdtptp.la
+             -dlopen hdtptp.la    \
+             -dlopen altcmpsc.la
 
   HDEPS    = dyngui.la    \
              dyninst.la   \
@@ -476,9 +481,11 @@ else
              hdt3505.la   \
              hdt3525.la   \
              hdtqeth.la   \
+             hdtzfcp.la   \
              hdttcph.la   \
              hdt1052c.la  \
              hdtptp.la    \
+             altcmpsc.la  \
              libherc.la   \
              libherct.la  \
              libhercd.la
@@ -611,6 +618,17 @@ dmap2hrc_LDFLAGS      = $(tools_LD_FLAGS)
 vmfplc2_SOURCES       = vmfplc2.c
 vmfplc2_LDADD         = $(tools_ADDLIBS)
 vmfplc2_LDFLAGS       = $(tools_LD_FLAGS)
+
+cmpsctst_SOURCES      = cmpsctst.c             \
+                        cmpsctst_cmpsc.c       \
+                        cmpsctst_cmpsc_2012.c  \
+                        cmpsctst_cmpscdbg.c    \
+                        cmpsctst_cmpscdct.c    \
+                        cmpsctst_cmpscget.c    \
+                        cmpsctst_cmpscmem.c    \
+                        cmpsctst_cmpscput.c
+cmpsctst_LDADD        = $(tools_ADDLIBS)
+cmpsctst_LDFLAGS      = $(tools_LD_FLAGS)
 #
 # files that are not 'built' per-se
 #
@@ -620,11 +638,15 @@ vmfplc2_LDFLAGS       = $(tools_LD_FLAGS)
 
 EXTRA_DIST = autoconf/config.rpath \
              autoconf/mkinstalldirs \
+             scripts/cmpsc.cnf     \
+             scripts/cmpsc.rexx    \
+             util/CMPSC.txt        \
              COPYRIGHT             \
              hercules.cnf          \
              cckdfix.c             \
              license_dyn76.txt     \
              README.COMMADPT       \
+             README.CMPSCTST       \
              README.SVN            \
              README.DYNMOD         \
              README.ECPSVM         \
@@ -680,14 +702,14 @@ EXTRA_DIST = autoconf/config.rpath \
              getopt.c              \
              wthreads.c            \
              herclogo.txt          \
-             hercules.ico
-
+             hercules.ico          \
+             cmpsctst.cmd          \
+             cmpsctst.rexx
 
 #
 # Source Header files. No 'build' for those
 #
-noinst_HEADERS = fishhang.h     \
-                 hostinfo.h     \
+noinst_HEADERS = hostinfo.h     \
                  cpuint.h       \
                  feat370.h      \
                  feat390.h      \
@@ -745,6 +767,7 @@ noinst_HEADERS = fishhang.h     \
                  chsc.h         \
                  qeth.h         \
                  qdio.h         \
+                 zfcp.h         \
                  mpc.h          \
                  pttrace.h      \
                  history.h      \
@@ -779,6 +802,16 @@ noinst_HEADERS = fishhang.h     \
                  chain.h        \
                  extstring.h    \
                  hRexx.h        \
+                 hRexxapi.h     \
+                 cmpsc.h        \
+                 cmpscbit.h     \
+                 cmpscdbg.h     \
+                 cmpscdct.h     \
+                 cmpscget.h     \
+                 cmpscmem.h     \
+                 cmpscput.h     \
+                 cmpsctst.h         \
+                 cmpsctst_stdinc.h  \
                  $(extra_dynamic_SRC)
 
 cckd: cckd2ckd$(EXEEXT)  \

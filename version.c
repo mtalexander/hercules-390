@@ -101,6 +101,7 @@ static const char *build_info[] = {
 #else
     "Without Dynamic loading support",
 #endif
+
 #if defined(HDL_BUILD_SHARED)
     "Using   shared libraries",
 #else
@@ -169,14 +170,14 @@ static const char *build_info[] = {
 #endif
 
 #if defined(ENABLE_OBJECT_REXX)
-    "With    Object REXX",
+    "With    Object REXX support",
 #else
-    "Without Object REXX",
+    "Without Object REXX support",
 #endif
 #if defined(ENABLE_REGINA_REXX)
-    "With    Regina REXX",
+    "With    Regina REXX support",
 #else
-    "Without Regina REXX",
+    "Without Regina REXX support",
 #endif
 
 #if defined(OPTION_HAO)
