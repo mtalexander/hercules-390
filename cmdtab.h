@@ -413,9 +413,13 @@
 #define exec_cmd_desc           "Execute a Rexx script"
 #define exec_cmd_help           \
                                 \
-  "Format: \"exec rexx_exec [args...]\" where 'rexx_exec' is the name of\n"      \
-  "the Rexx script, and 'args' are arguments (separated by spaces) to be\n"      \
-  "passed to the script.\n"
+  "Format: \"exec [mode] rexx_exec [args...]\" where 'rexx_exec' \n"             \
+  "is the name of the Rexx script, \n"                                           \
+  "and 'args' are arguments (separated by spaces) to be passed to the script.\n" \
+  "the arguments passing style is determined by the REXX Mode settings\n"        \
+  "it can be overridden for the current exec invocation specifying the mode\n"   \
+  "as ... \"exec com rexx_exec [args...]\" for command style arguments\n"        \
+  "or ... \"exec sub rexx_exec [args...]\" for subroutine style arguments\n"
 #endif /* defined(ENABLE_OBJECT_REXX) || defined(ENABLE_REGINA_REXX) */
 
 #define exit_cmd_desc           "(Synonym for 'quit')"
@@ -427,7 +431,6 @@
   "Reset the fcb to the standard one\n"                                          \
   "Load a fcb image\n"
 
-#define fish_hang_cmd_desc      "(deprecated; use 'hangrpt' instead)"
 #define fpc_cmd_desc            "Display or alter floating point control register"
 #define fpc_cmd_help            \
                                 \
@@ -453,18 +456,6 @@
   "value in hexadecimal (1-8 hex digits for 32-bit registers or 1-16 hex\n"      \
   "digits for 64-bit registers). Enter \"gpr\" by itself to display the\n"       \
   "register values without altering them.\n"
-
-#define hang_cmd_desc           "Display thread/lock/event objects (DEBUG)"
-#define hang_cmd_help           \
-                                \
-  "When built with --enable-fthreads --enable-fishhang, a detailed record of\n"            \
-  "every thread, lock and event that is created is maintained for debugging purposes.\n"   \
-  "If a lock is accessed before it has been initialized or if a thread exits while\n"      \
-  "still holding a lock, etc (including deadlock situations), the FishHang logic will\n"   \
-  "detect and report it. If you suspect one of hercules's threads is hung waiting for\n"   \
-  "a condition to be signalled for example, entering \"FishHangReport\" will display\n"    \
-  "the internal list of thread, locks and events to possibly help you determine where\n"   \
-  "it's hanging and what event (condition) it's hung on.\n"
 
 #define hao_cmd_desc            "Hercules Automatic Operator"
 #define hao_cmd_help            \
@@ -959,6 +950,37 @@
   "              force     This option will terminate the emulator\n"            \
   "                        immediately.\n"
 
+#define hwldr_cmd_desc          "Specify boot loader filename"
+#define hwldr_cmd_help          \
+                                \
+  "Format: \"hwldr scsiboot [filename]\"  Specifies the bootstrap loader\n"      \
+  "                                     to be used for FCP attached SCSI\n"      \
+  "                                     devices.\n"
+
+#define loaddev_cmd_desc        "Specify bootstrap loader IPL parameters"
+#define loaddev_cmd_help        \
+                                \
+  "Format: \"loaddev [options]\"  Specifies optional parameters to be\n"         \
+  "                             passed to be bootstrap loader.\n"                \
+  "  Valid options are:\n\n"                          \
+  "  \"portname [16 digit WWPN]\" Fibre Channel Portname of the FCP device\n"    \
+  "  \"lun      [16 digit LUN]\"  Fibre Channel Logical Unit Number\n"           \
+  "  \"bootprog [number]\"        The boot program number to be loaded\n"        \
+  "  \"br_lba   [16 digit LBA]\"  Logical Block Address of the boot record\n"    \
+  "  \"scpdata  [data]\"          Information to be passed to the OS\n"
+
+#define dumpdev_cmd_desc        "Specify bootstrap loader DUMP parameters"
+#define dumpdev_cmd_help        \
+                                \
+  "Format: \"dumpdev [options]\"  Specifies optional parameters to be\n"         \
+  "                             passed to be bootstrap loader.\n"                \
+  "  Valid options are:\n\n"                          \
+  "  \"portname [16 digit WWPN]\" Fibre Channel Portname of the FCP device\n"    \
+  "  \"lun      [16 digit LUN]\"  Fibre Channel Logical Unit Number\n"           \
+  "  \"bootprog [number]\"        The boot program number to be loaded\n"        \
+  "  \"br_lba   [16 digit LBA]\"  Logical Block Address of the boot record\n"    \
+  "  \"scpdata  [data]\"          Information to be passed to the OS\n"
+
 #define quit_cmd_desc           "Terminate the emulator"
 #define quit_cmd_help           \
                                 \
@@ -1016,9 +1038,11 @@
   "Msgl[evel]         - 0/1 disable/enable HHC17503I and HHC17504I messages \n"  \
   "Msgp[refix]        - set the prefix for normal messages\n"                    \
   "Errp[refix]        - set the prefix for trace/error messages\n"               \
+  "Mode               - define the argument passing style\n"                     \
+  "                   - command/subroutine\n"                                    \
   "\n"                                                                           \
   "using reset as parameter will reset the above settings to the defaults\n"
-#else /* defined(ENABLE_OBJECT_REXX) && defined(ENABLE_REGINA_REXX) */
+#else /* !defined(ENABLE_OBJECT_REXX) || !defined(ENABLE_REGINA_REXX) */
 #define rexx_cmd_desc           "display Rexx interpreter settings"
 #define rexx_cmd_help           \
                                 \
@@ -1036,6 +1060,8 @@
   "Msgl[evel]         - 0/1 disable/enable HHC17503I and HHC17504I messages \n"  \
   "Msgp[refix]        - set the prefix for normal messages\n"                    \
   "Errp[refix]        - set the prefix for trace/error messages\n"               \
+  "Mode               - define the argument passing style\n"                     \
+  "                   - command/subroutine\n"                                    \
   "\n"                                                                           \
   "using reset as parameter will reset the above settings to the defaults\n"
 #endif /* defined(ENABLE_OBJECT_REXX) && defined(ENABLE_REGINA_REXX) */
@@ -1533,9 +1559,10 @@ COMMAND( "scpecho",                 scpecho_cmd,            SYSCMD,             
 COMMAND( "scpimply",                scpimply_cmd,           SYSCMD,             scpimply_cmd_desc,      scpimply_cmd_help   )
 COMMAND( "ssd",                     ssd_cmd,                SYSCMD,             ssd_cmd_desc,           ssd_cmd_help        )
 #endif
-#if defined( FISH_HANG )
-COMMAND( "FishHangReport",          hang_cmd,               SYSCMDNOPER,        fish_hang_cmd_desc,     NULL                )
-COMMAND( "hangrpt",                 hang_cmd,               SYSCMDNOPER,        hang_cmd_desc,          hang_cmd_help       )
+#if defined( _FEATURE_SCSI_IPL )
+COMMAND( "hwldr",                   hwldr_cmd,              SYSCMDNOPER,        hwldr_cmd_desc,         hwldr_cmd_help      )
+COMMAND( "loaddev",                 lddev_cmd,              SYSCMD,             loaddev_cmd_desc,       loaddev_cmd_help    )
+COMMAND( "dumpdev",                 lddev_cmd,              SYSCMD,             dumpdev_cmd_desc,       dumpdev_cmd_help    )
 #endif
 #if !defined( _FW_REF )
 COMMAND( "f{+/-}adr",               NULL,                   SYSCMDNOPER,        f_cmd_desc,             NULL                )
@@ -1554,10 +1581,12 @@ COMMAND( "t{+/-}CKD",               NULL,                   SYSCMDNOPER,        
 COMMAND( "rexx",                    rexx_cmd,               SYSCONFIG,          rexx_cmd_desc,          rexx_cmd_help       )
 COMMAND( "exec",                    exec_cmd,               SYSCMD,             exec_cmd_desc,          exec_cmd_help       )
 #endif /* defined(ENABLE_OBJECT_REXX) || defined(ENABLE_REGINA_REXX) */
+#if 0
 #if defined( _MSVC_ )
 COMMAND( "dir",                     dir_cmd,                SYSCMDNDIAG8,       dir_cmd_desc,           NULL                )
 #else
 COMMAND( "ls",                      ls_cmd,                 SYSCMDNDIAG8,       ls_cmd_desc,            NULL                )
+#endif
 #endif
 #if defined( OPTION_CAPPING )
 COMMAND( "capping",                 capping_cmd,            SYSCFGNDIAG8,       capping_cmd_desc,       capping_cmd_help    )

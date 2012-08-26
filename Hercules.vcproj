@@ -34,8 +34,8 @@
 				ReBuildCommandLine="makefile.bat DEBUG makefile.msvc 32 -a"
 				CleanCommandLine="makefile.bat DEBUG makefile.msvc 32 clean"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_DEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_DEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -54,8 +54,8 @@
 				ReBuildCommandLine="makefile.bat DEBUG-X64 makefile.msvc 32 -a"
 				CleanCommandLine="makefile.bat DEBUG-X64 makefile.msvc 32 clean"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;_DEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;_DEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -74,8 +74,8 @@
 				ReBuildCommandLine="makefile.bat RETAIL makefile.msvc 32 -a"
 				CleanCommandLine="makefile.bat RETAIL makefile.msvc 32 clean"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;NDEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;NDEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -94,8 +94,8 @@
 				ReBuildCommandLine="makefile.bat RETAIL-X64 makefile.msvc 32 -a"
 				CleanCommandLine="makefile.bat RETAIL-X64 makefile.msvc 32 clean"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;NDEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;NDEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -115,8 +115,8 @@
 				ReBuildCommandLine="makefile.bat DEBUG-ALL makefile.msvc 32 -a &quot;$(SolutionDir)&quot;"
 				CleanCommandLine="makefile.bat DEBUG-ALL makefile.msvc 32 clean &quot;$(SolutionDir)&quot;"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_DEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_DEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -136,8 +136,8 @@
 				ReBuildCommandLine="makefile.bat DEBUG-ALL makefile.msvc 32 -a &quot;$(SolutionDir)&quot;"
 				CleanCommandLine="makefile.bat DEBUG-ALL makefile.msvc 32 clean &quot;$(SolutionDir)&quot;"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;_DEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;_DEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -157,8 +157,8 @@
 				ReBuildCommandLine="makefile.bat RETAIL-ALL makefile.msvc 32 -a &quot;$(SolutionDir)&quot;"
 				CleanCommandLine="makefile.bat RETAIL-ALL makefile.msvc 32 clean &quot;$(SolutionDir)&quot;"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;NDEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;NDEBUG;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -178,8 +178,8 @@
 				ReBuildCommandLine="makefile.bat RETAIL-ALL makefile.msvc 32 -a &quot;$(SolutionDir)&quot;"
 				CleanCommandLine="makefile.bat RETAIL-ALL makefile.msvc 32 clean &quot;$(SolutionDir)&quot;"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;NDEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;NDEBUG;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -199,8 +199,8 @@
 				ReBuildCommandLine="makefile.bat ALL-ALL makefile.msvc 32 -a &quot;$(SolutionDir)&quot;"
 				CleanCommandLine="makefile.bat ALL-ALL makefile.msvc 32 clean &quot;$(SolutionDir)&quot;"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_MSVC_;CPU=i386;HOST_ARCH=i386;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -220,8 +220,8 @@
 				ReBuildCommandLine="makefile.bat ALL-ALL makefile.msvc 32 -a &quot;$(SolutionDir)&quot;"
 				CleanCommandLine="makefile.bat ALL-ALL makefile.msvc 32 clean &quot;$(SolutionDir)&quot;"
 				Output="$(OutDir)"
-				PreprocessorDefinitions="FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION"
-				IncludeSearchPath="crypto;decNumber;SoftFloat;$(ProjectDir)"
+				PreprocessorDefinitions="OPTION_CMPSC_2012;FEATURE_BINARY_FLOATING_POINT;WIN32;_WIN64;_MSVC_;CPU=AMD64;HOST_ARCH=AMD64;OPTION_DYNAMIC_LOAD;HDL_BUILD_SHARED;OPTION_FTHREADS;EXTERNALGUI;FEATURE_CHANNEL_SUBSYSTEM;FEATURE_CANCEL_IO_FACILITY;FEATURE_ESAME;FEATURE_CONFIGURATION_TOPOLOGY_FACILITY;OPTION_HAO;HAVE_REGINA_REXXSAA_H;OPTION_CMDTGT;_FEATURE_SYSTEM_CONSOLE;FEATURE_CHSC;OPTION_PTTRACE;FEATURE_COMPRESSION;ENABLE_REGINA_REXX;ENABLE_OBJECT_REXX"
+				IncludeSearchPath="crypto;decNumber;$(ProjectDir)"
 				ForcedIncludes=""
 				AssemblySearchPath=""
 				ForcedUsingAssemblies=""
@@ -343,106 +343,182 @@
 			<Filter
 				Name="Utilities"
 				>
-				<File
-					RelativePath=".\cckdcdsk.c"
+				<Filter
+					Name="disk"
 					>
-				</File>
-				<File
-					RelativePath=".\cckdcomp.c"
+					<File
+						RelativePath=".\cckdcdsk.c"
+						>
+					</File>
+					<File
+						RelativePath=".\cckdcomp.c"
+						>
+					</File>
+					<File
+						RelativePath=".\cckddiag.c"
+						>
+					</File>
+					<File
+						RelativePath=".\cckdfix.c"
+						>
+					</File>
+					<File
+						RelativePath=".\cckdswap.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdcat.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdconv.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdcopy.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdinit.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdisup.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdload.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdls.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdpdsu.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dasdseq.c"
+						>
+					</File>
+				</Filter>
+				<Filter
+					Name="tape"
 					>
-				</File>
-				<File
-					RelativePath=".\cckddiag.c"
+					<File
+						RelativePath=".\hetget.c"
+						>
+					</File>
+					<File
+						RelativePath=".\hetinit.c"
+						>
+					</File>
+					<File
+						RelativePath=".\hetmap.c"
+						>
+					</File>
+					<File
+						RelativePath=".\hetupd.c"
+						>
+					</File>
+					<File
+						RelativePath=".\tapecopy.c"
+						>
+					</File>
+					<File
+						RelativePath=".\tapemap.c"
+						>
+					</File>
+					<File
+						RelativePath=".\tapesplt.c"
+						>
+					</File>
+					<File
+						RelativePath=".\vmfplc2.c"
+						>
+					</File>
+				</Filter>
+				<Filter
+					Name="other"
 					>
-				</File>
-				<File
-					RelativePath=".\cckdfix.c"
-					>
-				</File>
-				<File
-					RelativePath=".\cckdswap.c"
-					>
-				</File>
-				<File
-					RelativePath=".\conspawn.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdcat.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdconv.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdcopy.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdinit.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdisup.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdload.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdls.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdpdsu.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dasdseq.c"
-					>
-				</File>
-				<File
-					RelativePath=".\dmap2hrc.c"
-					>
-				</File>
-				<File
-					RelativePath=".\herclin.c"
-					>
-				</File>
-				<File
-					RelativePath=".\hetget.c"
-					>
-				</File>
-				<File
-					RelativePath=".\hetinit.c"
-					>
-				</File>
-				<File
-					RelativePath=".\hetmap.c"
-					>
-				</File>
-				<File
-					RelativePath=".\hetupd.c"
-					>
-				</File>
-				<File
-					RelativePath=".\tapecopy.c"
-					>
-				</File>
-				<File
-					RelativePath=".\tapemap.c"
-					>
-				</File>
-				<File
-					RelativePath=".\tapesplt.c"
-					>
-				</File>
-				<File
-					RelativePath=".\vmfplc2.c"
-					>
-				</File>
+					<File
+						RelativePath=".\conspawn.c"
+						>
+					</File>
+					<File
+						RelativePath=".\dmap2hrc.c"
+						>
+					</File>
+					<File
+						RelativePath=".\herclin.c"
+						>
+					</File>
+					<Filter
+						Name="cmpsctst"
+						>
+						<File
+							RelativePath=".\cmpsctst.cmd"
+							>
+						</File>
+						<File
+							RelativePath=".\cmpsctst.make"
+							>
+						</File>
+						<File
+							RelativePath=".\cmpsctst.rexx"
+							>
+						</File>
+						<Filter
+							Name="Source Files"
+							>
+							<File
+								RelativePath=".\cmpsctst.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpsc.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpsc_2012.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpscdbg.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpscdct.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpscget.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpscmem.c"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_cmpscput.c"
+								>
+							</File>
+						</Filter>
+						<Filter
+							Name="Header Files"
+							>
+							<File
+								RelativePath=".\cmpsctst.h"
+								>
+							</File>
+							<File
+								RelativePath=".\cmpsctst_stdinc.h"
+								>
+							</File>
+						</Filter>
+					</Filter>
+				</Filter>
 			</Filter>
 			<Filter
 				Name="Hercules"
@@ -867,6 +943,18 @@
 							</File>
 						</Filter>
 					</Filter>
+					<Filter
+						Name="zFCP"
+						>
+						<File
+							RelativePath=".\zfcp.c"
+							>
+						</File>
+						<File
+							RelativePath=".\zfcp.h"
+							>
+						</File>
+					</Filter>
 				</Filter>
 				<Filter
 					Name="Emulation"
@@ -991,10 +1079,6 @@
 							>
 						</File>
 						<File
-							RelativePath=".\fishhang.c"
-							>
-						</File>
-						<File
 							RelativePath=".\float.c"
 							>
 						</File>
@@ -1052,6 +1136,18 @@
 						</File>
 						<File
 							RelativePath=".\hostinfo.c"
+							>
+						</File>
+						<File
+							RelativePath=".\hRexx.c"
+							>
+						</File>
+						<File
+							RelativePath=".\hRexx_o.c"
+							>
+						</File>
+						<File
+							RelativePath=".\hRexx_r.c"
 							>
 						</File>
 						<File
@@ -1143,6 +1239,10 @@
 							>
 						</File>
 						<File
+							RelativePath=".\mpc.c"
+							>
+						</File>
+						<File
 							RelativePath=".\opcode.c"
 							>
 						</File>
@@ -1187,6 +1287,10 @@
 							>
 						</File>
 						<File
+							RelativePath=".\scescsi.c"
+							>
+						</File>
+						<File
 							RelativePath=".\script.c"
 							>
 						</File>
@@ -1196,6 +1300,10 @@
 						</File>
 						<File
 							RelativePath=".\sie.c"
+							>
+						</File>
+						<File
+							RelativePath=".\SoftFloat.c"
 							>
 						</File>
 						<File
@@ -1347,10 +1455,6 @@
 							>
 						</File>
 						<File
-							RelativePath=".\fishhang.h"
-							>
-						</File>
-						<File
 							RelativePath=".\fthreads.h"
 							>
 						</File>
@@ -1427,6 +1531,14 @@
 							>
 						</File>
 						<File
+							RelativePath=".\hRexx.h"
+							>
+						</File>
+						<File
+							RelativePath=".\hRexxapi.h"
+							>
+						</File>
+						<File
 							RelativePath=".\hscutl.h"
 							>
 						</File>
@@ -1483,6 +1595,10 @@
 							>
 						</File>
 						<File
+							RelativePath=".\mpc.h"
+							>
+						</File>
+						<File
 							RelativePath=".\msgenu.h"
 							>
 						</File>
@@ -1499,7 +1615,31 @@
 							>
 						</File>
 						<File
+							RelativePath=".\qdio.h"
+							>
+						</File>
+						<File
 							RelativePath=".\service.h"
+							>
+						</File>
+						<File
+							RelativePath=".\SoftFloat-macros.h"
+							>
+						</File>
+						<File
+							RelativePath=".\SoftFloat-milieu.h"
+							>
+						</File>
+						<File
+							RelativePath=".\SoftFloat-specialise.h"
+							>
+						</File>
+						<File
+							RelativePath=".\SoftFloat-types.h"
+							>
+						</File>
+						<File
+							RelativePath=".\SoftFloat.h"
 							>
 						</File>
 						<File
@@ -1533,29 +1673,41 @@
 					</Filter>
 				</Filter>
 				<Filter
-					Name="SoftFloat"
+					Name="Original SoftFloat-2b"
 					>
 					<File
-						RelativePath=".\SoftFloat\Makefile.am"
+						RelativePath=".\SoftFloat-2b.zip"
 						>
 					</File>
+				</Filter>
+				<Filter
+					Name="altcmpsc"
+					>
 					<Filter
-						Name="Doc Files"
+						Name="Source Files"
 						>
 						<File
-							RelativePath=".\SoftFloat\README.txt"
+							RelativePath=".\cmpsc_2012.c"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat-history.txt"
+							RelativePath=".\cmpscdbg.c"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat-source.txt"
+							RelativePath=".\cmpscdct.c"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat.txt"
+							RelativePath=".\cmpscget.c"
+							>
+						</File>
+						<File
+							RelativePath=".\cmpscmem.c"
+							>
+						</File>
+						<File
+							RelativePath=".\cmpscput.c"
 							>
 						</File>
 					</Filter>
@@ -1563,31 +1715,31 @@
 						Name="Header Files"
 						>
 						<File
-							RelativePath=".\SoftFloat\milieu.h"
+							RelativePath=".\cmpsc.h"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat-macros.h"
+							RelativePath=".\cmpscbit.h"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat-specialise.h"
+							RelativePath=".\cmpscdbg.h"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat-types.h"
+							RelativePath=".\cmpscdct.h"
 							>
 						</File>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat.h"
+							RelativePath=".\cmpscget.h"
 							>
 						</File>
-					</Filter>
-					<Filter
-						Name="Source Files"
-						>
 						<File
-							RelativePath=".\SoftFloat\SoftFloat.c"
+							RelativePath=".\cmpscmem.h"
+							>
+						</File>
+						<File
+							RelativePath=".\cmpscput.h"
 							>
 						</File>
 					</Filter>
@@ -1638,7 +1790,15 @@
 						>
 					</File>
 					<File
+						RelativePath=".\README.CMPSCTST"
+						>
+					</File>
+					<File
 						RelativePath=".\README.COMMADPT"
+						>
+					</File>
+					<File
+						RelativePath=".\README.DECNUMBER"
 						>
 					</File>
 					<File
@@ -1690,7 +1850,15 @@
 						>
 					</File>
 					<File
+						RelativePath=".\README.S37X"
+						>
+					</File>
+					<File
 						RelativePath=".\README.SETUID"
+						>
+					</File>
+					<File
+						RelativePath=".\README.SOFTFLOAT"
 						>
 					</File>
 					<File
@@ -1989,6 +2157,10 @@
 							>
 						</File>
 						<File
+							RelativePath=".\msvc.makefile.includes\IPV6_FLAGS.msvc"
+							>
+						</File>
+						<File
 							RelativePath=".\msvc.makefile.includes\MOD_RULES1.msvc"
 							>
 						</File>
@@ -2029,7 +2201,7 @@
 							>
 						</File>
 						<File
-							RelativePath=".\msvc.makefile.includes\REXX_DIR.msvc"
+							RelativePath=".\msvc.makefile.includes\REXX_DIRS.msvc"
 							>
 						</File>
 						<File
@@ -2139,6 +2311,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\util\CMPSC.txt"
+					>
+				</File>
+				<File
 					RelativePath=".\util\dasdlist"
 					>
 				</File>
@@ -2152,6 +2328,10 @@
 				</File>
 				<File
 					RelativePath=".\util\rawstape.jcl"
+					>
+				</File>
+				<File
+					RelativePath=".\util\scsiboot"
 					>
 				</File>
 				<File
@@ -2239,6 +2419,10 @@
 					</File>
 					<File
 						RelativePath=".\tests\cdgr.txt"
+						>
+					</File>
+					<File
+						RelativePath=".\tests\cdsg.txt"
 						>
 					</File>
 					<File
@@ -2804,6 +2988,62 @@
 				</File>
 				<File
 					RelativePath=".\hercules.cnf"
+					>
+				</File>
+				<File
+					RelativePath=".\hercules.cnf.rexx"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="scripts"
+				>
+				<File
+					RelativePath=".\scripts\cmpsc.cnf"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\cmpsc.rexx"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hbasic1.rexx"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hbasic2.rex"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hbasic3.cmd"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hbasic4.rx"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hbasic5.ext1"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hbasics"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hcommand.rexx"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hexecio.rexx"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hlinein.rexx"
+					>
+				</File>
+				<File
+					RelativePath=".\scripts\hrecurs.rexx"
 					>
 				</File>
 			</Filter>

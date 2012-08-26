@@ -21,7 +21,7 @@
 /*-------------------------------------------------------------------*/
 #if !defined(INLINE)
   #if defined(__GNUC__)
-    #define INLINE static __inline__ __attribute__((always_inline))
+    #define INLINE __inline__ __attribute__((always_inline))
   #elif defined(_MSVC_)
     #define INLINE __forceinline
   #else
@@ -34,6 +34,13 @@
   #endif
 #endif
 
+#if !defined(min)
+ #define min(_x, _y) ((_x) < (_y) ? (_x) : (_y))
+#endif
+
+#if !defined(max)
+ #define max(_x, _y) ((_x) > (_y) ? (_x) : (_y))
+#endif
 
 /*-------------------------------------------------------------------*/
 /* "Portability" macros for handling _MSVC_ port...                  */

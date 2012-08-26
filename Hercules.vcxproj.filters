@@ -8,6 +8,9 @@
     <Filter Include="Source Files\Utilities">
       <UniqueIdentifier>{5e506d73-848f-472b-b316-248621986b67}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Utilities\cmpsctst">
+      <UniqueIdentifier>{CB697219-81FE-4ecd-8BF1-FE9DBFBE85FE}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\Hercules">
       <UniqueIdentifier>{00b04ad3-7bbc-4c0f-b3b9-42351a5a8e4c}</UniqueIdentifier>
     </Filter>
@@ -155,6 +158,42 @@
     </ClCompile>
     <ClCompile Include="cckdswap.c">
       <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst.h">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst.cmd">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst.rexx">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_stdinc.h">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpsc.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpsc_2012.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpscdbg.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpscdct.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpscget.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpscmem.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
+    </ClCompile>
+    <ClCompile Include="cmpsctst_cmpscput.c">
+      <Filter>Source Files\Utilities\cmpsctst</Filter>
     </ClCompile>
     <ClCompile Include="conspawn.c">
       <Filter>Source Files\Utilities</Filter>
@@ -429,9 +468,6 @@
     <ClCompile Include="fillfnam.c">
       <Filter>Source Files\Hercules\Emulation\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="fishhang.c">
-      <Filter>Source Files\Hercules\Emulation\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="float.c">
       <Filter>Source Files\Hercules\Emulation\Source Files</Filter>
     </ClCompile>
@@ -564,7 +600,7 @@
     <ClCompile Include="qdio.c">
       <Filter>Source Files\Hercules\Emulation\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rexx.c">
+    <ClCompile Include="mpc.c">
       <Filter>Source Files\Hercules\Emulation\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="scedasd.c">
@@ -623,6 +659,15 @@
     </ClCompile>
     <ClCompile Include="dyn76.c">
       <Filter>Source Files\Hercules\Emulation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hRexx.c">
+      <Filter>Source Files\Hercules\Rexx\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hRexx_o.c">
+      <Filter>Source Files\Hercules\Rexx\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hRexx_r.c">
+      <Filter>Source Files\Hercules\Rexx\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1318,6 +1363,9 @@
     <ClInclude Include="tt32api.h">
       <Filter>Source Files\Hercules\Devices\CTC\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="qeth.h">
+      <Filter>Source Files\Hercules\Devices\CTC\Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="tuntap.h">
       <Filter>Source Files\Hercules\Devices\CTC\Header Files</Filter>
     </ClInclude>
@@ -1409,9 +1457,6 @@
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="fillfnam.h">
-      <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="fishhang.h">
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="fthreads.h">
@@ -1516,6 +1561,9 @@
     <ClInclude Include="memrchr.h">
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="mpc.h">
+      <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="msgenu.h">
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
@@ -1526,6 +1574,9 @@
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pttrace.h">
+      <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="qdio.h">
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="service.h">
@@ -1561,11 +1612,14 @@
     <ClInclude Include="extstring.h">
       <Filter>Source Files\Hercules\Emulation\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hRexx.h">
+      <Filter>Source Files\Hercules\Rexx\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hRexxapi.h">
+      <Filter>Source Files\Hercules\Rexx\Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cnsllogo.h">
       <Filter>Source Files\Hercules\Devices\Con/Disp/Term\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qeth.h">
-      <Filter>Source Files\Hercules\Devices\CTC\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

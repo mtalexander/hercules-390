@@ -82,17 +82,16 @@
 #define OPTION_IPLPARM                  /* IPL PARM a la VM          */
 #define OPTION_CAPPING                  /* Enable capping cnf stmnt  */
 
-#ifndef FISH_HANG
-  #ifndef OPTION_WTHREADS
-    #define OPTION_PTTRACE              /* Pthreads tracing          */
-  #endif
+#ifndef OPTION_WTHREADS
+  #define OPTION_PTTRACE                /* Pthreads tracing          */
 #endif
 
 #define OPTION_SET_STSI_INFO            /* Set STSI info in cfg file */
 #define OPTION_TAPE_AUTOMOUNT           /* "Automount" CCWs support  */
 
-#define OPTION_BUILTIN_SYMBOLS
-#define OPTION_CONFIG_SYMBOLS
+#define OPTION_CONFIG_SYMBOLS           /* $(defsym) support         */
+#define OPTION_BUILTIN_SYMBOLS          /* "LPARNAME", "DATE", etc.  */
+
 #if 0
 #define OPTION_CMDTGT                   /* the cmdtgt command        */
 #define OPTION_MSGCLR                   /* Colored messages          */
@@ -193,6 +192,7 @@
 #undef FEATURE_CHANNEL_SWITCHING
 #undef FEATURE_CHECKSUM_INSTRUCTION
 #undef FEATURE_CHSC
+#undef FEATURE_CMPSC_ENHANCEMENT_FACILITY
 #undef FEATURE_COMPARE_AND_MOVE_EXTENDED
 #undef FEATURE_COMPARE_AND_SWAP_AND_STORE                       /*407*/
 #undef FEATURE_COMPARE_AND_SWAP_AND_STORE_FACILITY_2            /*208*/
@@ -235,6 +235,7 @@
 #undef FEATURE_FPS_ENHANCEMENT                                  /*DFP*/
 #undef FEATURE_FPS_EXTENSIONS
 #undef FEATURE_GENERAL_INSTRUCTIONS_EXTENSION_FACILITY
+#undef FEATURE_HARDWARE_LOADER
 #undef FEATURE_HERCULES_DIAGCALLS
 #undef FEATURE_HEXADECIMAL_FLOATING_POINT
 #undef FEATURE_HFP_EXTENSIONS
@@ -292,6 +293,7 @@
 #undef FEATURE_RESTORE_SUBCHANNEL_FACILITY                      /*208*/
 #undef FEATURE_RESUME_PROGRAM
 #undef FEATURE_SCEDIO
+#undef FEATURE_SCSI_IPL
 #undef FEATURE_SVS
 #undef FEATURE_S370_CHANNEL
 #undef FEATURE_S390_DAT
