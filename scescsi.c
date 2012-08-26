@@ -530,6 +530,7 @@ static U32   sdias_size;
 /*-------------------------------------------------------------------*/
 void ARCH_DEP(sdias_store_status_clear)(REGS *regs)
 {
+    UNREFERENCED(regs);
     sdias_size = 0;
     if(sdias_hsa)
         free(sdias_hsa);
@@ -718,7 +719,7 @@ int n;
           && !strncasecmp("type",argv[1],4)
           && isdigit(*(argv[1]+4))
           && sscanf(argv[1]+4, "%u%c", &file, &c) == 1
-          && file >= 0 && file < HWL_MAXFILETYPE))
+          && file < HWL_MAXFILETYPE))
         {
             if(!ntf->name)
             {

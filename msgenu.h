@@ -1893,7 +1893,7 @@ do { \
 #define HHC03972 "%1d:%04X PTP: error reading from device %s: %s"
 #define HHC03975 "%1d:%04X PTP: incorrect number of parameters"
 #define HHC03976 "%1d:%04X PTP: option %s value %s invalid"
-#define HHC03978 "%1d:%04X PTP: option %s unknown or specified incorrectly"
+#define HHC03978 "%1d:%04X PTP: option %c unknown or specified incorrectly"
 #define HHC03981 "%1d:%04X %s: %s: %s %s %s"
 #define HHC03982 "%s: %s %s %s"
 #define HHC03983 "%1d:%04X %s: %s"
