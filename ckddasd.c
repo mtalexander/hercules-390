@@ -219,6 +219,7 @@ int             trks;                   /* #of tracks in CKD file    */
 int             cyls;                   /* #of cylinders in CKD file */
 int             highcyl;                /* Highest cyl# in CKD file  */
 char           *cu = NULL;              /* Specified control unit    */
+char           *kw = NULL;              /* Argument keyword          */
 int             cckd=0;                 /* 1 if compressed CKD       */
 char            pathname[MAX_PATH];     /* file path in host format  */
 char            filename[FILENAME_MAX]; /* work area for display     */
@@ -346,8 +347,8 @@ char           *strtok_str = NULL;      /* save last position        */
         if (strlen (argv[i]) > 3
          && memcmp("cu=", argv[i], 3) == 0)
         {
-                 strtok_r (argv[i], "=",   &strtok_str );
-            cu = strtok_r (NULL,    " \t", &strtok_str );
+            kw = strtok_r (argv[i], "=", &strtok_str);
+            cu = strtok_r (NULL, " \t", &strtok_str);
             continue;
         }
         if (strcasecmp ("nosyncio", argv[i]) == 0 ||
@@ -770,7 +771,7 @@ int     i;                              /* Index                     */
 BYTE    unitstat;                       /* Unit Status               */
 
     /* Write the last track image if it's modified */
-    ckddasd_read_track (dev, -1, &unitstat);
+    (dev->hnd->read) (dev, -1, &unitstat);
 
     /* Free the cache */
     cache_lock(CACHE_DEVBUF);
@@ -824,7 +825,7 @@ int             trk;                    /* Track number              */
 /*-------------------------------------------------------------------*/
 /* Return track image length                                         */
 /*-------------------------------------------------------------------*/
-static int ckd_trklen (DEVBLK *dev, BYTE *buf)
+int ckd_trklen (DEVBLK *dev, BYTE *buf)
 {
 int             sz;                     /* Size so far               */
 
@@ -1182,13 +1183,12 @@ void ckddasd_end (DEVBLK *dev)
 BYTE    unitstat;                       /* Unit Status               */
 
     /* Write the last track image if it's modified */
-    ckddasd_read_track (dev, -1, &unitstat);
+    (dev->hnd->read) (dev, -1, &unitstat);
 }
 
 /*-------------------------------------------------------------------*/
 /* Return used cylinders                                             */
 /*-------------------------------------------------------------------*/
-static
 int ckddasd_used (DEVBLK *dev)
 {
     return dev->ckdcyls;
@@ -2332,8 +2332,9 @@ BYTE            trk_ovfl;               /* == 1 if track ovfl write  */
     /*---------------------------------------------------------------*/
     /* CONTROL NO-OPERATION                                          */
     /*---------------------------------------------------------------*/
-        /* Command reject if within the domain of a Locate Record */
-        if (dev->ckdlcount > 0)
+        /* Command reject if within the domain of a Locate Record,   */
+        /* except if Read IPL                          2012-08-14    */
+        if (dev->ckdlcount > 0 && dev->prevcode != 0x02)
         {
             ckd_build_sense (dev, SENSE_CR, 0, 0,
                             FORMAT_0, MESSAGE_2);
@@ -3201,10 +3202,10 @@ BYTE            trk_ovfl;               /* == 1 if track ovfl write  */
                            message */
                 iobuf[0] = 0x00;                     // Message length
                 iobuf[1] = 0x09;                    // ...
-                iobuf[2] = 0x02;                    // 3990-x/ESS message
-                iobuf[3] = 0x00;                    // Message code
+                iobuf[2] = 0x00;                    // Format: "No message"
+                iobuf[3] = 0x00;                    // Message code: n/a
                 memcpy (iobuf+4, iobuf+8, 4);       // Copy message identifier from bytes 8-11
-                iobuf[9] = 0x00;                    // Flags
+                iobuf[8] = 0x00;                    // Flags
                 dev->ckdssdlen = 9;                 // Indicate length of subsystem data prepared
                 break;
             case 0x0E: /* Unit address configuration */

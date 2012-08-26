@@ -230,83 +230,88 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
                   pDevCTCBLK->szTUNDevName, "TUN");
     }
 
+    if (!pDevCTCBLK->fPreconfigured)
+    {
+
 #if defined(OPTION_W32_CTCI)
 
-    // Set the specified driver/dll i/o buffer sizes..
-    {
-        struct tt32ctl tt32ctl;
-
-        memset( &tt32ctl, 0, sizeof(tt32ctl) );
-        strlcpy( tt32ctl.tt32ctl_name, pDevCTCBLK->szTUNDevName, sizeof(tt32ctl.tt32ctl_name) );
-
-        tt32ctl.tt32ctl_devbuffsize = pDevCTCBLK->iKernBuff;
-        if( TUNTAP_IOCtl( pDevCTCBLK->fd, TT32SDEVBUFF, (char*)&tt32ctl ) != 0  )
+        // Set the specified driver/dll i/o buffer sizes..
         {
-            // "%1d:%04X CTC: ioctl '%s' failed for device '%s': '%s'"
-            WRMSG(HHC00902, "W", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
-                  "TT32SDEVBUFF", pDevCTCBLK->szTUNDevName, strerror( errno ) );
-        }
+            struct tt32ctl tt32ctl;
 
-        tt32ctl.tt32ctl_iobuffsize = pDevCTCBLK->iIOBuff;
-        if( TUNTAP_IOCtl( pDevCTCBLK->fd, TT32SIOBUFF, (char*)&tt32ctl ) != 0  )
-        {
-            // "%1d:%04X CTC: ioctl '%s' failed for device '%s': '%s'"
-            WRMSG(HHC00902, "W", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
-                  "TT32SIOBUFF", pDevCTCBLK->szTUNDevName, strerror( errno ) );
+            memset( &tt32ctl, 0, sizeof(tt32ctl) );
+            strlcpy( tt32ctl.tt32ctl_name, pDevCTCBLK->szTUNDevName, sizeof(tt32ctl.tt32ctl_name) );
+
+            tt32ctl.tt32ctl_devbuffsize = pDevCTCBLK->iKernBuff;
+            if( TUNTAP_IOCtl( pDevCTCBLK->fd, TT32SDEVBUFF, (char*)&tt32ctl ) != 0  )
+            {
+                // "%1d:%04X CTC: ioctl '%s' failed for device '%s': '%s'"
+                WRMSG(HHC00902, "W", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
+                      "TT32SDEVBUFF", pDevCTCBLK->szTUNDevName, strerror( errno ) );
+            }
+
+            tt32ctl.tt32ctl_iobuffsize = pDevCTCBLK->iIOBuff;
+            if( TUNTAP_IOCtl( pDevCTCBLK->fd, TT32SIOBUFF, (char*)&tt32ctl ) != 0  )
+            {
+                // "%1d:%04X CTC: ioctl '%s' failed for device '%s': '%s'"
+                WRMSG(HHC00902, "W", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
+                      "TT32SIOBUFF", pDevCTCBLK->szTUNDevName, strerror( errno ) );
+            }
         }
-    }
 #endif
 
 #ifdef OPTION_TUNTAP_CLRIPADDR
-    VERIFY( TUNTAP_ClrIPAddr ( pDevCTCBLK->szTUNDevName ) == 0 );
+        VERIFY( TUNTAP_ClrIPAddr ( pDevCTCBLK->szTUNDevName ) == 0 );
 #endif
 
 #ifdef OPTION_TUNTAP_SETMACADDR
 
-    if( !pDevCTCBLK->szMACAddress[0] )   // (if MAC address unspecified)
-    {
-        in_addr_t  wrk_guest_ip_addr;
-        MAC        wrk_guest_mac_addr;
-
-        if ((in_addr_t)-1 != (wrk_guest_ip_addr = inet_addr( pDevCTCBLK->szGuestIPAddr )))
+        if( !pDevCTCBLK->szMACAddress[0] )   // (if MAC address unspecified)
         {
-            build_herc_iface_mac ( wrk_guest_mac_addr, (const BYTE*) &wrk_guest_ip_addr );
+            in_addr_t  wrk_guest_ip_addr;
+            MAC        wrk_guest_mac_addr;
 
-            MSGBUF( pDevCTCBLK->szMACAddress,
-                    "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
-                    ,wrk_guest_mac_addr[0]
-                    ,wrk_guest_mac_addr[1]
-                    ,wrk_guest_mac_addr[2]
-                    ,wrk_guest_mac_addr[3]
-                    ,wrk_guest_mac_addr[4]
-                    ,wrk_guest_mac_addr[5] );
+            if ((in_addr_t)-1 != (wrk_guest_ip_addr = inet_addr( pDevCTCBLK->szGuestIPAddr )))
+            {
+                build_herc_iface_mac ( wrk_guest_mac_addr, (const BYTE*) &wrk_guest_ip_addr );
+
+                MSGBUF( pDevCTCBLK->szMACAddress,
+                        "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
+                        ,wrk_guest_mac_addr[0]
+                        ,wrk_guest_mac_addr[1]
+                        ,wrk_guest_mac_addr[2]
+                        ,wrk_guest_mac_addr[3]
+                        ,wrk_guest_mac_addr[4]
+                        ,wrk_guest_mac_addr[5] );
+            }
         }
-    }
 
-    TRACE
-    (
-        "** CTCI_Init: %4.4X (%s): IP \"%s\"  -->  default MAC \"%s\"\n"
+        TRACE
+        (
+            "** CTCI_Init: %4.4X (%s): IP \"%s\"  -->  default MAC \"%s\"\n"
 
-        ,pDevCTCBLK->pDEVBLK[0]->devnum
-        ,pDevCTCBLK->szTUNDevName
-        ,pDevCTCBLK->szGuestIPAddr
-        ,pDevCTCBLK->szMACAddress
-    );
+            ,pDevCTCBLK->pDEVBLK[0]->devnum
+            ,pDevCTCBLK->szTUNDevName
+            ,pDevCTCBLK->szGuestIPAddr
+            ,pDevCTCBLK->szMACAddress
+        );
 
-    VERIFY( TUNTAP_SetMACAddr ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szMACAddress  ) == 0 );
+        VERIFY( TUNTAP_SetMACAddr ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szMACAddress  ) == 0 );
 #endif
 
-    VERIFY( TUNTAP_SetIPAddr  ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szDriveIPAddr ) == 0 );
+        VERIFY( TUNTAP_SetIPAddr  ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szDriveIPAddr ) == 0 );
 
-    VERIFY( TUNTAP_SetDestAddr( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szGuestIPAddr ) == 0 );
+        VERIFY( TUNTAP_SetDestAddr( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szGuestIPAddr ) == 0 );
 
 #ifdef OPTION_TUNTAP_SETNETMASK
-    VERIFY( TUNTAP_SetNetMask ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szNetMask     ) == 0 );
+        VERIFY( TUNTAP_SetNetMask ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szNetMask     ) == 0 );
 #endif
 
-    VERIFY( TUNTAP_SetMTU     ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szMTU         ) == 0 );
+        VERIFY( TUNTAP_SetMTU     ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szMTU         ) == 0 );
 
-    VERIFY( TUNTAP_SetFlags   ( pDevCTCBLK->szTUNDevName, nIFFlags                  ) == 0 );
+        VERIFY( TUNTAP_SetFlags   ( pDevCTCBLK->szTUNDevName, nIFFlags                  ) == 0 );
+
+    }
 
     // Copy the fd to make panel.c happy
     pDevCTCBLK->pDEVBLK[0]->fd =
@@ -995,9 +1000,12 @@ static void*  CTCI_ReadThread( PCTCBLK pCTCBLK )
         // Check for error condition
         if( iLength < 0 )
         {
-            // "%1d:%04X CTC: error reading from device '%s': '%s'"
-            WRMSG(HHC00912, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNDevName,
-                strerror( errno ) );
+            if( !pCTCBLK->fCloseInProgress )
+            {
+                // "%1d:%04X CTC: error reading from device '%s': '%s'"
+                WRMSG(HHC00912, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNDevName,
+                    strerror( errno ) );
+            }
             break;
         }
 
@@ -1171,7 +1179,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
     OPTRESET();
     optind      = 0;
     // Check for correct number of arguments
-    if( argc < 2 )
+    if( argc < 1 )
     {
         // "%1d:%04X CTC: incorrect number of parameters"
         WRMSG(HHC00915, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum );
@@ -1380,39 +1388,48 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
 
     if( !pCTCBLK->fOldFormat )
     {
-        // New format has 2 and only 2 parameters (Though several options).
-        if( argc != 2 )
+        if (1 == argc)                /* Pre-configured net device   */
         {
-            // "%1d:%04X CTC: incorrect number of parameters"
-            WRMSG(HHC00915, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum );
-            return -1;
+            strlcpy(pCTCBLK->szTUNDevName, argv[0], sizeof(pCTCBLK->szTUNDevName));
+            pCTCBLK->fPreconfigured = TRUE;
+            argc--; argv++;
         }
-
-        // Guest IP Address
-        if( inet_aton( *argv, &addr ) == 0 )
+        else
         {
-            // "%1d:%04X CTC: option '%s' value '%s' invalid"
-            WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
-                  "IP address", *argv );
-            return -1;
+            // New format has 2 and only 2 parameters (Though several options).
+            if( argc != 2 )
+            {
+                // "%1d:%04X CTC: incorrect number of parameters"
+                WRMSG(HHC00915, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum );
+                return -1;
+            }
+
+            // Guest IP Address
+            if( inet_aton( *argv, &addr ) == 0 )
+            {
+                // "%1d:%04X CTC: option '%s' value '%s' invalid"
+                WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
+                      "IP address", *argv );
+                return -1;
+            }
+
+            strlcpy( pCTCBLK->szGuestIPAddr, *argv, sizeof(pCTCBLK->szGuestIPAddr) );
+
+            argc--; argv++;
+
+            // Driver IP Address
+            if( inet_aton( *argv, &addr ) == 0 )
+            {
+                // "%1d:%04X CTC: option '%s' value '%s' invalid"
+                WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
+                      "IP address", *argv );
+                return -1;
+            }
+
+            strlcpy( pCTCBLK->szDriveIPAddr, *argv, sizeof(pCTCBLK->szDriveIPAddr) );
+
+            argc--; argv++;
         }
-
-        strlcpy( pCTCBLK->szGuestIPAddr, *argv, sizeof(pCTCBLK->szGuestIPAddr) );
-
-        argc--; argv++;
-
-        // Driver IP Address
-        if( inet_aton( *argv, &addr ) == 0 )
-        {
-            // "%1d:%04X CTC: option '%s' value '%s' invalid"
-            WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
-                  "IP address", *argv );
-            return -1;
-        }
-
-        strlcpy( pCTCBLK->szDriveIPAddr, *argv, sizeof(pCTCBLK->szDriveIPAddr) );
-
-        argc--; argv++;
     }
     else // if( pCTCBLK->fOldFormat )
     {

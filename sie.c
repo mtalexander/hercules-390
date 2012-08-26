@@ -179,7 +179,7 @@ static char *dbg_name[] = {
         for(i = 0; i < 0x61; i++)
             if(sie_perfmon[i])
                 logmsg(MSG(HHC02285, "I" ,sie_perfmon[i],dbg_name[i]));
-        logmsg(MSG(HHC02286, "I", 
+        logmsg(MSG(HHC02286, "I",
             (sie_perfmon[SIE_PERF_EXEC+SIE_PERF_MAXNEG] +
              sie_perfmon[SIE_PERF_EXEC_U+SIE_PERF_MAXNEG]*7) /
             sie_perfmon[SIE_PERF_ENTER+SIE_PERF_MAXNEG]));
@@ -532,7 +532,12 @@ U64     dreg;
         if(fld & 0x7ffffff8)
         {
             facility_mask = &(regs->mainstor[fld]);
-            for(i = 0; i < STFL_BYTESIZE; i++)
+            GUESTREGS->facility_list[0] &= (facility_mask[0]
+#if defined(FEATURE_ESAME)
+        /* Prevent current architecture mode being masked */ | 0x40
+#endif
+                                                                   );
+            for(i = 1; i < STFL_BYTESIZE; i++)
                GUESTREGS->facility_list[i] &= facility_mask[i];
         }
     }
@@ -974,7 +979,7 @@ static int ARCH_DEP(run_sie) (REGS *regs)
     BYTE  oldv;     /* siebk->v change check reference */
     BYTE *ip;       /* instruction pointer             */
     const zz_func *current_opcode_table;
-#ifdef OPTION_CAPPING 
+#ifdef OPTION_CAPPING
     register    int     *caplocked = &sysblk.caplocked[regs->cpuad];
                 LOCK    *caplock = &sysblk.caplock[regs->cpuad];
 #endif
@@ -1127,7 +1132,7 @@ static int ARCH_DEP(run_sie) (REGS *regs)
                 /* BHe: I have tried several settings. But 2 unrolled */
                 /* executes gives (core i7 at my place) the best results. */
                 /* Even a do { } while(0); with several unrolled executes */
-                /* and without the 'i' was slower. That surprised me. */                
+                /* and without the 'i' was slower. That surprised me. */
                 for(i = 0; i < 128; i++)
                 {
                     UNROLLED_EXECUTE(current_opcode_table, GUESTREGS);

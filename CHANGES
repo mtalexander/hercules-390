@@ -1,14 +1,35 @@
+15 Aug 2012 Change DASD utilities defaults to make wait PSW in IPL1 record
+            EC-mode and disabled for machine checks, add -b and -m switches
+            to dasdinit and dasdload to obtain old behavior - Kevin Leonard
+15 Aug 2012 Prevent command reject response to no-op during Read IPL to disk
+            - Kevin Leonard, Mark L. Gaubatz
+18 Jul 2012 Report IO/s on panel displays when operating in device server mode
+            (no configured CPUs).
+18 Jul 2012 Support CCW command 0x01, write no carriage return in con1052c.c,
+            but only when generated for no message prefixing.  -- jph
+20 Jun 2012 Update configure to recognize GCC versions; use -march=native when
+            supported by GCC; correct debug option generation.
+            - Mark L. Gaubatz
+19 Jun 2012 Fix dasd PSF PRSD suborder 03 bug (florian.bilek@gmail.com by Fish)
+17 Jun 2012 Improved TOD clock resolution; eliminated floating-point clock
+            conversions under Windows; document interval timer conversion
+            factors; corrected various clock stores - Mark L. Gaubatz
+23 May 2012 Fix INTLOCK bug in PTF and STSI instructions causing deadlock
+            during SYNCHRONIZE_CPUS leading to eventual Machine Check
+            identified by Neale Ferguson [neale@sinenomine.net] -- Fish
+16 May 2012 Do initial CPU reset when MAINSIZE is changed - Kevin Leonard
+11 May 2012 CMPSC_2012 - Fish
 02 Oct 2011 STSI made aware of facilities LOGICAL_PARTITION and VIRTUAL_MACHINE
             for reporting system information - Harold
 02 Oct 2011 Enabled STSI 3.2.2 - Harold
-02 Oct 2011 Added Hercules facilities VIRTUAL_MACHINE and LOGICAL_PARTITION, 
+02 Oct 2011 Added Hercules facilities VIRTUAL_MACHINE and LOGICAL_PARTITION,
             replacing facility HYPERVISOR - Harold
 28 Aug 2011 QDIO Thin Interrupts - Jan Jaeger
 18 Aug 2011 New IEEE-754 Binary Floating-Point implementation - Fish
 12 Aug 2011 Fix color message and timestamp problem. Removed LOGMSG macro.
             change log_msg to logmsg. - P. Gorlinsky
 12 Aug 2011 Add logmsg() support for utilities. - P. Gorlinsky
-11 Aug 2011 Modify maxsize/eotmargin to accept 'K', 'M', 'G', 'T' designations 
+11 Aug 2011 Modify maxsize/eotmargin to accept 'K', 'M', 'G', 'T' designations
             Correct file open on '*' unloaded filename - P. Gorlinsky
 25 Jul 2011 Fix suspend/resume MAINSTOR/XPNDSTOR bugs - Fish
 16 Jul 2011 Fix SCSI tape S613 abend issue - Fish

@@ -273,8 +273,8 @@ int  deconfigure_cpu (int cpu);
 int  configure_numcpu (int numcpu);
 int  configure_memlock(int);
 int  configure_memfree(int);
-int  configure_storage(U32);
-int  configure_xstorage(U32);
+int  configure_storage(U64);
+int  configure_xstorage(U64);
 int  configure_capping(U32 value);
 
 int  configure_herc_priority(int prio);
@@ -454,7 +454,7 @@ int configure_yroffset(int);
 int configure_tzoffset(int);
 
 /* Functions in module service.c */
-void scp_command (char *command, int priomsg, int echo);
+int scp_command (char *command, int priomsg, int echo);
 int can_signal_quiesce ();
 int can_send_command ();
 int signal_quiesce (U16 count, BYTE unit);

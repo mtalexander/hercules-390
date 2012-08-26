@@ -363,6 +363,7 @@ DLL_EXPORT void del_symbol(const char *sym)
 DLL_EXPORT void set_symbol(const char *sym,const char *value)
 {
     SYMBOL_TOKEN        *tok;
+    extern int          pttmadethread;         /* pthreads is active */
 
     if ( sym == NULL || value == NULL || strlen(sym) == 0 )
         return;
@@ -391,8 +392,45 @@ DLL_EXPORT void set_symbol(const char *sym,const char *value)
     }
 
 #else
-    if ( setenv( sym, value, TRUE ) )
-        WRMSG(HHC00136, "W", "setenv()", strerror(errno));
+    #if 0
+
+    setenv/putenv are not thread safe.  This needs redesign.  Essentially,
+    you must maintain your own set of variables, under proper mutexing,
+    in front of the environment proper, which must remain read only.  When
+    running a command (system()), you must fork(), kill all other threads,
+    stow the local variables in the environment, and issue the command.
+
+    It won't work to restrict all access to the environment from Hercules
+    to a single thread as many library routines access _environment
+    directly.  That is, once you do setenv(), even getenv() is unsafe.
+
+    In short, pthreads is not for the average Joe COBOL.
+
+    A workable solution is to have a separate process that is not
+    multithreaded.  It can maintain its environment as this code tries to;
+    it can issue system() with impunity.  Of course, you have the problem
+    of designing a working protocol, but that can be done with a message
+    queue, or with pipes as long as the message length is within the
+    maximum atomic pipe buffer size PIPE_BUF.
+
+    #endif
+    if (!pttmadethread)
+    {
+       if ( setenv( sym, value, TRUE ) )
+           WRMSG(HHC00136, "W", "setenv()", strerror(errno));
+    }
+    else
+    {
+        char b[4096];
+        static int toldhim;
+
+        if (!toldhim)
+        {
+            sprintf (b, "cannot set %s: Not thread safe--setting disabled", sym);
+            WRMSG(HHC00136, "W", "setenv()", b);
+            toldhim = 1;
+        }
+    }
 #endif
 
     tok=get_symbol_token(sym,1);
@@ -449,62 +487,6 @@ DLL_EXPORT const char *get_symbol(const char *sym)
     }
     return(tok->val);
 }
-
-#if 0
-static void buffer_addchar_and_alloc(char **bfr,char c,int *ix_p,int *max_p)
-{
-    char *buf;
-    int ix;
-    int mx;
-    buf=*bfr;
-    ix=*ix_p;
-    mx=*max_p;
-    if((ix+1)>=mx)
-    {
-        mx+=SYMBOL_BUFFER_GROWTH;
-        if(buf==NULL)
-        {
-            buf=malloc(mx);
-        }
-        else
-        {
-            buf=realloc(buf,mx);
-        }
-        *bfr=buf;
-        *max_p=mx;
-    }
-    buf[ix++]=c;
-    buf[ix]=0;
-    *ix_p=ix;
-    return;
-}
-#endif
-
-#if 0
-static void append_string(char **bfr,char *text,int *ix_p,int *max_p)
-{
-    int i;
-    for(i=0;text[i]!=0;i++)
-    {
-        buffer_addchar_and_alloc(bfr,text[i],ix_p,max_p);
-    }
-    return;
-}
-#endif
-
-#if 0
-static void append_symbol(char **bfr,char *sym,int *ix_p,int *max_p)
-{
-    char *txt;
-    txt=(char *)get_symbol(sym);
-    if(txt==NULL)
-    {
-        txt="";
-    }
-    append_string(bfr,txt,ix_p,max_p);
-    return;
-}
-#endif
 
 DLL_EXPORT char *resolve_symbol_string(const char *text)
 {
@@ -677,31 +659,6 @@ DLL_EXPORT void list_all_symbols(void)
         if (tok)
             WRMSG(HHC02199, "I", tok->var, tok->val ? tok->val : "");
     }
-    return;
-}
-
-DLL_EXPORT void kill_all_symbols(void)
-{
-    SYMBOL_TOKEN        *tok;
-    int i;
-    for(i=0;i<symbol_count;i++)
-    {
-        tok=symbols[i];
-        if(tok==NULL)
-        {
-            continue;
-        }
-        free(tok->val);
-        if(tok->var!=NULL)
-        {
-            free(tok->var);
-        }
-        free(tok);
-        symbols[i]=NULL;
-    }
-    free(symbols);
-    symbol_count=0;
-    symbol_max=0;
     return;
 }
 

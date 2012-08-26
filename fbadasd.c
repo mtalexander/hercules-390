@@ -66,6 +66,8 @@ struct  stat statbuf;                   /* File information          */
 int     startblk;                       /* Device origin block number*/
 int     numblks;                        /* Device block count        */
 BYTE    c;                              /* Character work area       */
+char   *cu = NULL;                      /* Specified control unit    */
+char   *kw = NULL;                      /* Argument keyword          */
 int     cfba = 0;                       /* 1 = Compressed fba        */
 int     i;                              /* Loop index                */
 CKDDASD_DEVHDR  devhdr;                 /* Device header             */
@@ -242,8 +244,8 @@ char   *strtok_str = NULL;              /* save last position        */
             if (strlen (argv[i]) > 3
              && memcmp("cu=", argv[i], 3) == 0)   /* support for cu= added but  */
             {                                     /* is ignored for the present */
-                strtok_r (argv[i], "=",   &strtok_str );
-                strtok_r (NULL,    " \t", &strtok_str );
+                kw = strtok_r (argv[i], "=", &strtok_str);
+                cu = strtok_r (NULL, " \t", &strtok_str);
                 continue;
             }
             if (strcasecmp ("nosyncio", argv[i]) == 0
@@ -791,7 +793,7 @@ void fbadasd_end (DEVBLK *dev)
 BYTE            unitstat;
 
     /* Forces updated buffer to be written */
-    fbadasd_read_blkgrp (dev, -1, &unitstat);
+    (dev->hnd->read) (dev, -1, &unitstat);
 }
 
 /*-------------------------------------------------------------------*/
@@ -818,7 +820,7 @@ int fbadasd_close_device ( DEVBLK *dev )
 BYTE            unitstat;
 
     /* Forces updated buffer to be written */
-    fbadasd_read_blkgrp (dev, -1, &unitstat);
+    (dev->hnd->read) (dev, -1, &unitstat);
 
     /* Free the cache */
     cache_lock(CACHE_DEVBUF);

@@ -89,6 +89,14 @@ case "$target_os" in
         ;;
 esac
 
+
+#----------------------------------------------------------------------#
+#  Determine GCC level                                                 #
+#----------------------------------------------------------------------#
+
+hc_gcc_level="`gcc -v 2>&1 | tail -1 | awk '{print $3}'`"
+AC_MSG_NOTICE( [Detected GCC level is: ${hc_gcc_level}] )
+
 #------------------------#
 #  Fix CFLAGS if needed  #
 #------------------------#
@@ -400,7 +408,6 @@ AH_TEMPLATE( [BUILD_HERCIFC],           [Define if hercifc program is to be buil
 AH_TEMPLATE( [WIN32],                   [Define when building under Win32 (MinGW or Cygwin)] )
 AH_TEMPLATE( [EXTERNALGUI],             [Define to build interface to external Windows GUI] )
 AH_TEMPLATE( [OPTION_FTHREADS],         [Define to use included threads implementation (fthreads)] )
-AH_TEMPLATE( [FISH_HANG],               [Define to debug correct fthreads LOCK handling (requires fthreads)] )
 
 AH_TEMPLATE( [TIMESPEC_IN_TIME_H],      [Define if 'struct timespec' defined in <time.h>] )
 AH_TEMPLATE( [TIMESPEC_IN_SYS_TYPES_H], [Define if 'struct timespec' defined in <sys/types.h>] )
@@ -1548,24 +1555,6 @@ AC_ARG_ENABLE( fthreads,
     [hc_cv_opt_fthreads=$hc_cv_is_windows]
 )
 
-AC_ARG_ENABLE( fishhang,
-
-    AC_HELP_STRING( [--enable-fishhang],
-
-        [debug correct lock handling (fthreads only)]
-    ),
-    [
-        case "${enableval}" in
-        yes) hc_cv_opt_fishhang=yes                      ;;
-        no)  hc_cv_opt_fishhang=no                       ;;
-        *)   AC_MSG_RESULT( [ERROR: invalid 'fishhang' option] )
-             hc_error=yes
-             ;;
-        esac
-    ],
-    [hc_cv_opt_fishhang=no]
-)
-
 AC_ARG_ENABLE( multi-cpu,
 
     AC_HELP_STRING( [--enable-multi-cpu=yes|no|NUMBER],
@@ -1824,15 +1813,6 @@ fi
 
 #------------------------------------------------------------------------------
 
-if test "$hc_cv_opt_fishhang"  = "yes"  &&
-   test "$hc_cv_opt_fthreads" != "yes"; then
-
-   AC_MSG_RESULT( [ERROR: fishhang requires fthreads] )
-   hc_error=yes
-fi
-
-#------------------------------------------------------------------------------
-
 if test "$hc_cv_is_apple"                          = "yes"  &&
    test "$hc_cv_pp_macro_arg_counting_broke"       = "yes"  &&
    test "$hc_cv_traditional_cpp_is_K_AND_R_C_type" = "yes"; then
@@ -1864,13 +1844,16 @@ AC_CACHE_SAVE()
 
 AC_MSG_CHECKING( [for what optimization flags to use] )
 
+    hc_cv_optimization_flags=""
+
 if test "$hc_cv_opt_debug" = "yes"; then
 
     # Note: the -g option we start with below will be removed if they specified
     # their own optimization flags via "--enable-optimization=(flags)", but will
     # be kept if they specify an optimized build via "--enable-optimization=yes"
 
-    hc_cv_optimization_flags="-g -ggdb"
+    hc_cv_optimization_flags="$hc_cv_optimization_flags -g3"    # Include module/statement_information
+    hc_cv_optimization_flags="$hc_cv_optimization_flags -ggdb3" # Include gdb symbols
 fi
 
 case "$hc_cv_opt_optimization" in
@@ -1889,7 +1872,6 @@ case "$hc_cv_opt_optimization" in
         if test "x$hc_cv_opt_optimization" = "x"; then
 
             if test "$hc_cv_opt_debug" = "yes"; then
-
                 hc_cv_auto_optimize=no
             else
                 hc_cv_auto_optimize=yes
@@ -1909,7 +1891,6 @@ if test "$hc_cv_auto_optimize" = "yes"; then
 
 
     if test "$hc_cv_builtin_alloca_broke" != "yes"; then
-
         hc_cv_optimization_flags="$hc_cv_optimization_flags -O3"
     fi
 
@@ -1920,7 +1901,15 @@ if test "$hc_cv_auto_optimize" = "yes"; then
         x86_64-yes)
 
             hc_cv_is_intel_x86_arch=yes
-            hc_cv_intel_cpu_type=k8
+            if test "$hc_cv_is_apple" = "yes"; then
+               AS_VERSION_COMPARE( $hc_gcc_level, "4.2.0", [hc_cv_intel_cpu_type=k8],
+                                                           [hc_cv_intel_cpu_type=core2],
+                                                           [hc_cv_intel_cpu_type=core2] )
+            else
+               AS_VERSION_COMPARE( $hc_gcc_level, "4.2.0", [hc_cv_intel_cpu_type=k8],
+                                                           [hc_cv_intel_cpu_type=native],
+                                                           [hc_cv_intel_cpu_type=native] )
+            fi
             ;;
 
         i386-yes|i486-yes|i586-yes|i686-yes|i786-yes)
@@ -1928,15 +1917,19 @@ if test "$hc_cv_auto_optimize" = "yes"; then
             hc_cv_is_intel_x86_arch=yes
 
             if test $target_cpu = i786; then
-
                 hc_cv_intel_cpu_type=pentium4
             else
                 if test $target_cpu        = i686   &&
-                   test "hc_cv_is_gcc_2_96" = "yes"; then
-
+                   test "$hc_cv_is_gcc_2_96" = "yes"; then
                     hc_cv_intel_cpu_type=i586
                 else
-                    hc_cv_intel_cpu_type=$target_cpu
+                   if test "$hc_cv_is_apple" = "yes"; then
+                      hc_cv_intel_cpu_type=$target_cpu
+                   else
+                      AS_VERSION_COMPARE( $hc_gcc_level, "4.2.0", [hc_cv_intel_cpu_type=$target_cpu],
+                                                                  [hc_cv_intel_cpu_type=native],
+                                                                  [hc_cv_intel_cpu_type=native] )
+                   fi
                 fi
             fi
             ;;
@@ -1955,10 +1948,23 @@ if test "$hc_cv_auto_optimize" = "yes"; then
     esac
     if test "$hc_cv_is_intel_x86_arch" = "yes"; then
 
+        # Set CPU type
         hc_cv_optimization_flags="$hc_cv_optimization_flags -march=$hc_cv_intel_cpu_type"
 
-        if test "$hc_cv_builtin_alloca_broke" != "yes"; then
+        # Align 128-bit values
+        AS_VERSION_COMPARE( $hc_gcc_level, "3.0.0", [hc_cv_optimization_flags="$hc_cv_optimization_flags"],
+                                                    [hc_cv_optimization_flags="$hc_cv_optimization_flags"],
+                                                    [hc_cv_optimization_flags="$hc_cv_optimization_flags -m128bit-long-double"] )
 
+        # Dynamically inline small block string operations (subroutine calls still made for large area calls)
+        if test "$hc_cv_is_apple" != "yes"; then
+           AS_VERSION_COMPARE( $hc_gcc_level, "4.1.2", [hc_cv_optimization_flags="$hc_cv_optimization_flags"],
+                                                       [hc_cv_optimization_flags="$hc_cv_optimization_flags"],
+                                                       [hc_cv_optimization_flags="$hc_cv_optimization_flags -minline-stringops-dynamically"] )
+        fi
+
+        if test "$hc_cv_builtin_alloca_broke" != "yes" &&
+           test "$hc_cv_opt_debug" != "yes"; then
             hc_cv_optimization_flags="$hc_cv_optimization_flags -fomit-frame-pointer"
         else
             hc_cv_optimization_flags="$hc_cv_optimization_flags -fno-omit-frame-pointer"
@@ -2046,7 +2052,6 @@ test "$hc_cv_opt_enhanced_configincludes" = "yes"  &&  AC_DEFINE(OPTION_ENHANCED
 test "$hc_cv_opt_auto_oper"               = "yes"  &&  AC_DEFINE(OPTION_HAO)
 test "$hc_cv_opt_dynamic_load"            = "yes"  &&  AC_DEFINE(OPTION_DYNAMIC_LOAD)
 test "$hc_cv_opt_fthreads"                = "yes"  &&  AC_DEFINE(OPTION_FTHREADS)
-test "$hc_cv_opt_fishhang"                = "yes"  &&  AC_DEFINE(FISH_HANG)
 test "$hc_cv_hdl_build_shared"            = "yes"  &&  AC_DEFINE(HDL_BUILD_SHARED)
 test "$hc_cv_have_lt_dlopen"              = "yes"  &&  AC_DEFINE(HDL_USE_LIBTOOL)
 test "$hc_cv_is_windows"                  = "yes"  &&  AC_DEFINE(WIN32)
@@ -2159,7 +2164,6 @@ AC_CACHE_SAVE()
 
 AM_CONDITIONAL( OPTION_DYNAMIC_LOAD, [ test "$hc_cv_opt_dynamic_load" = "yes" ] )
 AM_CONDITIONAL( BUILD_FTHREADS,      [ test "$hc_cv_opt_fthreads"     = "yes" ] )
-AM_CONDITIONAL( BUILD_FISHHANG,      [ test "$hc_cv_opt_fishhang"     = "yes" ] )
 AM_CONDITIONAL( BUILD_HERCIFC,       [ test "$hc_cv_build_hercifc"    = "yes" ] )
 AM_CONDITIONAL( SETUID_HERCIFC,      [ test "$hc_cv_setuid_hercifc"   = "yes" ] )
 AM_CONDITIONAL( HERCIFC_GROUPSET,    [ test "x$hc_cv_hercifc_groupname" != "x"] )

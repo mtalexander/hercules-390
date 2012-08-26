@@ -38,26 +38,41 @@
   #endif
 #endif
 
-struct dirent {
-        long            d_ino;
-        char            d_name[FILENAME_MAX + 1];
+struct dirent
+{
+    long    d_ino;
+    char    d_name[FILENAME_MAX + 1];
 };
 
-typedef unsigned __int32 in_addr_t;
-typedef unsigned char   u_char;
-typedef unsigned int    u_int;
-typedef unsigned long   u_long;
-typedef unsigned __int8  u_int8_t;
-typedef unsigned __int16 u_int16_t;
-typedef unsigned __int32 u_int32_t;
-typedef unsigned __int64 u_int64_t;
-typedef signed __int8   int8_t;
-typedef signed __int16  int16_t;
-typedef signed __int32  int32_t;
-typedef signed __int64  int64_t;
-typedef int             ssize_t;
-typedef int             pid_t;
-typedef int             mode_t;
+typedef unsigned char       u_char;
+typedef unsigned int        u_int;
+typedef unsigned long       u_long;
+
+typedef unsigned __int8     u_int8_t;
+typedef   signed __int8       int8_t;
+
+typedef unsigned __int16    u_int16_t;
+typedef   signed __int16      int16_t;
+
+typedef unsigned __int32    u_int32_t;
+typedef   signed __int32      int32_t;
+
+typedef unsigned __int64    u_int64_t;
+typedef   signed __int64      int64_t;
+
+typedef   int32_t           pid_t;
+typedef   int32_t           mode_t;
+typedef u_int32_t           in_addr_t;
+
+#if defined( _WIN64 )
+  #define  SIZEOF_INT_P     8
+  #define  SIZEOF_SIZE_T    8
+  typedef  int64_t          ssize_t;
+#else
+  #define  SIZEOF_INT_P     4
+  #define  SIZEOF_SIZE_T    4
+  typedef  int32_t          ssize_t;
+#endif
 
 #include <io.h>
 #include <share.h>
@@ -174,12 +189,18 @@ typedef int             mode_t;
   #define  OPTION_HAO                   // Hercules Automatic Operator
 #endif
 
-#if defined( _WIN64 )
-  #define  SIZEOF_INT_P       8
-  #define  SIZEOF_SIZE_T      8
-#else
-  #define  SIZEOF_INT_P       4
-  #define  SIZEOF_SIZE_T      4
-#endif
+// IDs for various POSIX.1b interval timers and system clocks
+
+#define CLOCK_REALTIME                  0
+#define CLOCK_MONOTONIC                 1
+#define CLOCK_PROCESS_CPUTIME_ID        2
+#define CLOCK_THREAD_CPUTIME_ID         3
+#define CLOCK_MONOTONIC_RAW             4
+#define CLOCK_REALTIME_COARSE           5
+#define CLOCK_MONOTONIC_COARSE          6
+#define CLOCK_BOOTTIME                  7
+#define CLOCK_REALTIME_ALARM            8
+#define CLOCK_BOOTTIME_ALARM            9
+
 
 #endif /*!defined(_HERCWIND_H)*/
