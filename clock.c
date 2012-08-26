@@ -620,6 +620,10 @@ TOD etod_clock(REGS *regs, ETOD* ETOD, ETOD_format format)
             low |= 0x0000000000400000ULL;
           low |= regs->todpr;
           break;
+          
+        case ETOD_raw:
+        case ETOD_fast:
+          break;
       }
     }
 

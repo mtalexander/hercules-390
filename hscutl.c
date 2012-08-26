@@ -394,6 +394,7 @@ DLL_EXPORT void set_symbol(const char *sym,const char *value)
 #else
     #if 0
 
+    /*
     setenv/putenv are not thread safe.  This needs redesign.  Essentially,
     you must maintain your own set of variables, under proper mutexing,
     in front of the environment proper, which must remain read only.  When
@@ -412,6 +413,7 @@ DLL_EXPORT void set_symbol(const char *sym,const char *value)
     of designing a working protocol, but that can be done with a message
     queue, or with pipes as long as the message length is within the
     maximum atomic pipe buffer size PIPE_BUF.
+    */
 
     #endif
     if (!pttmadethread)

@@ -294,7 +294,6 @@ static void process_input_queue(DEVBLK *dev)
 ZFCP_GRP *grp = (ZFCP_GRP*)dev->group->grp_data;
 int iq = dev->qdio.i_qpos;
 int mq = dev->qdio.i_qcnt;
-int nobuff = 1;
 
     DBGTRC(dev, "Input Qpos(%d) Bpos(%d)\n",dev->qdio.i_qpos,dev->qdio.i_bpos[dev->qdio.i_qpos]);
 
@@ -313,9 +312,8 @@ int nobuff = 1;
                 U64 sa; U32 len; BYTE *buf;
                 U64 la;
                 QDIO_SBAL *sbal;
-                int olen = 0; int tlen = 0;
+                int tlen = 0;
                 int ns;
-                int mactype = 0;
 
                     DBGTRC(dev, _("Input Queue(%d) Buffer(%d)\n"),iq,ib);
 
@@ -648,6 +646,7 @@ static void zfcp_query_device (DEVBLK *dev, char **devclass,
 ZFCP_GRP *grp = (ZFCP_GRP*)dev->group->grp_data;
 
     BEGIN_DEVICE_CLASS_QUERY( "FCP", dev, devclass, buflen, buffer );
+    UNREFERENCED(grp);
 
     snprintf( buffer, buflen, "%s%s"
         , (dev->group->acount == ZFCP_GROUP_SIZE) ? "" : "*Incomplete "
