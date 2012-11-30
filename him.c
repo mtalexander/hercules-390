@@ -23,7 +23,7 @@
 #include "devtype.h"
 
 #define WRITEDBG
-#define ENABLE_TRACING_STMTS 1
+#define ENABLE_TRACING_STMTS 0
 #include "dbgtrace.h"
 
 #define __FAVOR_BSD
