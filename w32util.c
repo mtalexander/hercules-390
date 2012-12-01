@@ -23,6 +23,17 @@
 
 #include "hercules.h"
 
+//#define W32UTIL_DEBUG
+
+#if defined(DEBUG) && !defined(W32UTIL_DEBUG)
+ #define W32UTIL_DEBUG
+#endif
+
+#if defined(W32UTIL_DEBUG)
+ #define  ENABLE_TRACING_STMTS   1
+ #include "dbgtrace.h"
+#endif
+
 #if defined( _MSVC_ )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -407,26 +418,26 @@ DLL_EXPORT char* strtok_r ( char* s, const char* sep, char** lasts )
 
 // (INTERNAL) Convert Windows SystemTime value to #of nanoseconds since 1/1/1970...
 
-static LARGE_INTEGER FileTimeTo1970Nanoseconds( const FILETIME* pFT )
+static ULARGE_INTEGER FileTimeTo1970Nanoseconds( const FILETIME* pFT )
 {
-    LARGE_INTEGER  liRetVal;
+    ULARGE_INTEGER  uliRetVal;
     ASSERT( pFT );
 
-    // Convert FILETIME to LARGE_INTEGER
+    // Convert FILETIME to ULARGE_INTEGER
 
-    liRetVal.HighPart = pFT->dwHighDateTime;
-    liRetVal.LowPart  = pFT->dwLowDateTime;
+    uliRetVal.HighPart = pFT->dwHighDateTime;
+    uliRetVal.LowPart  = pFT->dwLowDateTime;
 
     // Convert from 100-nsec units since 1/1/1601
     // to number of 100-nsec units since 1/1/1970
 
-    liRetVal.QuadPart -= 116444736000000000ULL;
+    uliRetVal.QuadPart -= 116444736000000000ULL;
 
     // Convert from 100-nsec units to just nsecs
 
-    liRetVal.QuadPart *= 100;
+    uliRetVal.QuadPart *= 100;
 
-    return liRetVal;
+    return uliRetVal;
 }
 
 
@@ -435,95 +446,135 @@ static LARGE_INTEGER FileTimeTo1970Nanoseconds( const FILETIME* pFT )
 
 DLL_EXPORT int clock_gettime ( clockid_t clk_id, struct timespec *tp )
 {
-    LARGE_INTEGER           liWork;                   // (high-performance-counter tick count)
-    static LARGE_INTEGER    liHPCTicksPerSecond;      // (high-performance-counter ticks per second)
-    static LARGE_INTEGER    liStartingHPCTick;        // (high-performance-counter tick count)
-    static LARGE_INTEGER    liStartingNanoTime;       // (time of last resync in nanoseconds)
-    static struct timespec  tsPrevSyncVal = {0};      // (time of last resync as timespec)
-    static struct timespec  tsPrevRetVal  = {0};      // (previously returned value)
-    static BOOL             bInSync = FALSE;          // (work flag)
+    ULARGE_INTEGER          uliWork;                    // (current HPC tick count and work)
+    static ULARGE_INTEGER   uliHPCTicksPerSec   = {0};  // (HPC ticks per second)
+    static ULARGE_INTEGER   uliStartingHPCTick;         // (HPC tick count @ start of interval)
+    static ULARGE_INTEGER   uliMaxElapsedHPCTicks;      // (HPC tick count resync threshold)
+    static ULARGE_INTEGER   uliStartingNanoTime;        // (time of last resync in nanoseconds)
+    static struct timespec  tsPrevRetVal        = {0};  // (previously returned timespec value)
+
+    static U64   u64ClockResolution  = MAX_GTOD_RESOLUTION;   // (max emulated TOD clock resolution)
+    static U64   u64ClockNanoScale;                           // (elapsed nanoseconds scale factor)
+    static UINT  uiResyncSecs        = DEF_GTOD_RESYNC_SECS;  // (host TOD clock resync interval)
+    static BOOL  bInSync             = FALSE;                 // (host TOD clock resync flag)
 
     // Validate parameters...
 
     ASSERT( tp );
-    if (unlikely( clk_id > CLOCK_MONOTONIC ||
-                  !tp ))
+
+    if (unlikely( clk_id > CLOCK_MONOTONIC || !tp ))
     {
-      errno = EINVAL;
-      return -1;
+        errno = EINVAL;
+        return -1;
     }
 
+    while (1) { // (for easy backward branching)
 
     // Query current high-performance counter value...
 
-    VERIFY( QueryPerformanceCounter( &liWork ) );
-
+    VERIFY( QueryPerformanceCounter( (LARGE_INTEGER*)&uliWork ) );
 
     // Perform (re-)initialization...
 
-    if (unlikely( !bInSync ))
+    if (unlikely( !bInSync ))       // (do this once per resync interval)
     {
-        FILETIME       ftStartingSystemTime;
+        FILETIME  ftStartingSystemTime;
 
         // The "GetSystemTimeAsFileTime" function obtains the current system date
         // and time. The information is in Coordinated Universal Time (UTC) format.
 
         GetSystemTimeAsFileTime( &ftStartingSystemTime );
-        liStartingHPCTick.QuadPart = liWork.QuadPart;
+        uliStartingHPCTick.QuadPart = uliWork.QuadPart;
 
-        VERIFY( QueryPerformanceFrequency( &liHPCTicksPerSecond ) );
+        // PROGRAMMING NOTE: According to Microsoft Desktop Dev Center (MSDN):
+        // http://msdn.microsoft.com/en-us/library/windows/desktop/ms644905(v=vs.85).aspx
+        // "The [HPC] frequency cannot change while the system is running."
 
-        liStartingNanoTime = FileTimeTo1970Nanoseconds( &ftStartingSystemTime );
+        if (!uliHPCTicksPerSec.QuadPart)  // (we only need to do this once)
+        {
+            VERIFY( QueryPerformanceFrequency( (LARGE_INTEGER*)&uliHPCTicksPerSec ));
+            TRACE("w32util: uliHPCTicksPerSec = 0x%16.16llX (%llu)\n", uliHPCTicksPerSec.QuadPart, uliHPCTicksPerSec.QuadPart );
 
-        tsPrevSyncVal.tv_sec = 0;       // (to force init further below)
-        tsPrevSyncVal.tv_nsec = 0;      // (to force init further below)
+            // Verify the length of time between host TOD clock resyncs isn't
+            // so very long that the number of High Performance Counter ticks
+            // times our resync interval would then overflow 64-bits. If so,
+            // we need to decrease our interval until we're certain it won't.
 
+            while (uliHPCTicksPerSec.QuadPart > (_UI64_MAX / (uiResyncSecs + 1)))
+                uiResyncSecs--;
+            TRACE("w32util: uiResyncSecs = %lu\n", uiResyncSecs );
+
+            uliMaxElapsedHPCTicks.QuadPart =
+                uliHPCTicksPerSec.QuadPart * uiResyncSecs;
+            TRACE("w32util: uliMaxElapsedHPCTicks = 0x%16.16llX (%llu)\n", uliMaxElapsedHPCTicks.QuadPart, uliMaxElapsedHPCTicks.QuadPart );
+
+            // Calculate the maximum supported clock resolution such that we don't
+            // resync with the host TOD clock more than once every resync interval.
+
+            while (u64ClockResolution >= MIN_GTOD_RESOLUTION &&
+                (uliHPCTicksPerSec.QuadPart * (uiResyncSecs + 1)) >= (_UI64_MAX / u64ClockResolution))
+            {
+                u64ClockResolution /= 10;  // (decrease TOD clock resolution)
+            }
+            TRACE("w32util: u64ClockResolution = %llu (%11.9f)\n", u64ClockResolution, 1.0 / (double)u64ClockResolution );
+
+            // (check for error condition...)
+
+            if (u64ClockResolution < MIN_GTOD_RESOLUTION)
+            {
+                // "Cannot provide minimum emulated TOD clock resolution"
+                WRMSG( HHC04112, "S" );
+                exit(1);
+            }
+
+            u64ClockNanoScale = (MAX_GTOD_RESOLUTION / u64ClockResolution);
+            TRACE("w32util: u64ClockNanoScale = %llu\n", u64ClockNanoScale );
+        }
+
+        uliStartingNanoTime = FileTimeTo1970Nanoseconds( &ftStartingSystemTime );
         bInSync = TRUE;
     }
 
     // Calculate elapsed HPC ticks...
 
-    liWork.QuadPart -= liStartingHPCTick.QuadPart;
-
-    // Convert to elapsed nanoseconds...
-
-    liWork.QuadPart *= 1000000000;
-    liWork.QuadPart /= liHPCTicksPerSecond.QuadPart;
-
-    // Add starting time to yield current TOD in nanoseconds...
-
-    liWork.QuadPart += liStartingNanoTime.QuadPart;
-
-    // Build results...
-
-    tp->tv_sec   =  (time_t) (liWork.QuadPart / 1000000000);
-    tp->tv_nsec  =  (long) (liWork.QuadPart % 1000000000);
+    if (likely( uliWork.QuadPart >= uliStartingHPCTick.QuadPart ))
+    {
+        uliWork.QuadPart -= uliStartingHPCTick.QuadPart;
+    }
+    else // (counter wrapped)
+    {
+        uliWork.QuadPart += _UI64_MAX - uliStartingHPCTick.QuadPart + 1;
+    }
 
     // Re-sync to system clock every so often to prevent clock drift
     // since high-performance timer updated independently from clock.
 
-#define RESYNC_GTOD_EVERY_SECS      30      // (every 30 seconds)
-
-    // (initialize time of previous 'sync')
-
-    if (unlikely( !tsPrevSyncVal.tv_sec ))
+    if (unlikely( uliWork.QuadPart >= uliMaxElapsedHPCTicks.QuadPart ))
     {
-        tsPrevSyncVal.tv_sec  = tp->tv_sec;
-        tsPrevSyncVal.tv_nsec = tp->tv_nsec;
+        bInSync = FALSE;    // (force resync)
+        continue;           // (start over)
     }
 
-    // (is is time to resync again?)
+    // Convert elapsed HPC ticks to elapsed nanoseconds...
 
-    if (unlikely( (tp->tv_sec - tsPrevSyncVal.tv_sec) > RESYNC_GTOD_EVERY_SECS ))
-    {
-        bInSync = FALSE; // (force resync)
-        return (clock_gettime(clk_id, tp));
-    }
+    uliWork.QuadPart *= u64ClockResolution;
+    uliWork.QuadPart /= uliHPCTicksPerSec.QuadPart;
+    uliWork.QuadPart *= u64ClockNanoScale;
 
+    // Add starting time to yield current TOD in nanoseconds...
+
+    uliWork.QuadPart += uliStartingNanoTime.QuadPart;
+
+    // Build results...
+
+    tp->tv_sec   =  (time_t) (uliWork.QuadPart / BILLION);
+    tp->tv_nsec  =  (long)   (uliWork.QuadPart % BILLION);
+
+    break; } // end while(1)
 
     // If monotonic request, ensure each call returns a unique, ever-increasing value...
 
-    if (clk_id == CLOCK_MONOTONIC)
+    if (unlikely( clk_id == CLOCK_MONOTONIC ))
     {
         if (unlikely( !tsPrevRetVal.tv_sec ))
         {
@@ -543,25 +594,23 @@ DLL_EXPORT int clock_gettime ( clockid_t clk_id, struct timespec *tp )
             tp->tv_sec  = tsPrevRetVal.tv_sec;
             tp->tv_nsec = tsPrevRetVal.tv_nsec + 1;
 
-            if (unlikely(tp->tv_nsec >= 1000000000))
+            if (unlikely(tp->tv_nsec >= BILLION))
             {
-                tp->tv_sec  += tp->tv_nsec / 1000000000;
-                tp->tv_nsec  = tp->tv_nsec % 1000000000;
+                tp->tv_sec  += tp->tv_nsec / BILLION;
+                tp->tv_nsec  = tp->tv_nsec % BILLION;
             }
         }
     }
 
-
     // Save previously returned high clock value for next MONOTONIC clock time...
 
-    if (tp->tv_sec > tsPrevRetVal.tv_sec ||
+    if (likely( tp->tv_sec > tsPrevRetVal.tv_sec ||
         (tp->tv_sec == tsPrevRetVal.tv_sec &&
-         tp->tv_nsec > tsPrevRetVal.tv_nsec))
+         tp->tv_nsec > tsPrevRetVal.tv_nsec)))
     {
         tsPrevRetVal.tv_sec  = tp->tv_sec;
         tsPrevRetVal.tv_nsec = tp->tv_nsec;
     }
-
 
     // Done!
 
@@ -597,10 +646,10 @@ DLL_EXPORT int gettimeofday ( struct timeval* pTV, void* pTZ )
     pTV->tv_sec  = (long)  (ts.tv_sec);
     pTV->tv_usec = (long) ((ts.tv_nsec + 500) / 1000);
 
-    if (unlikely( pTV->tv_usec >= 1000000 ))
+    if (unlikely( pTV->tv_usec >= MILLION ))
     {
         pTV->tv_sec  += 1;
-        pTV->tv_usec -= 1000000;
+        pTV->tv_usec -= MILLION;
     }
 
     return 0;
@@ -687,7 +736,7 @@ static int w32_nanosleep ( const struct timespec* rqtp )
     (0
         || !rqtp
         || rqtp->tv_nsec < 0
-        || rqtp->tv_nsec >= 1000000000
+        || rqtp->tv_nsec >= BILLION
     ))
     {
         errno = EINVAL;
@@ -716,10 +765,10 @@ static int w32_nanosleep ( const struct timespec* rqtp )
             tsOurWake.tv_sec  += rqtp->tv_sec;
             tsOurWake.tv_nsec += rqtp->tv_nsec;
 
-            if (unlikely( tsOurWake.tv_nsec >= 1000000000 ))
+            if (unlikely( tsOurWake.tv_nsec >= BILLION ))
             {
                 tsOurWake.tv_sec  += 1;
-                tsOurWake.tv_nsec -= 1000000000;
+                tsOurWake.tv_nsec -= BILLION;
             }
         }
 
@@ -762,10 +811,10 @@ static int w32_nanosleep ( const struct timespec* rqtp )
                 tsOurWake.tv_nsec += (long) ((timerint * 10) - liWaitAmt.QuadPart) * 100;
                 liWaitAmt.QuadPart = (timerint * 10);
 
-                if (unlikely( tsOurWake.tv_nsec >= 1000000000 ))
+                if (unlikely( tsOurWake.tv_nsec >= BILLION ))
                 {
-                    tsOurWake.tv_sec  += (tsOurWake.tv_nsec / 1000000000);
-                    tsOurWake.tv_nsec %= 1000000000;
+                    tsOurWake.tv_sec  += (tsOurWake.tv_nsec / BILLION);
+                    tsOurWake.tv_nsec %= BILLION;
                 }
             }
 
@@ -876,7 +925,7 @@ DLL_EXPORT int usleep ( useconds_t useconds )
 
     struct timespec rqtp;
 
-    if (unlikely( useconds < 0 || useconds >= 1000000 ))
+    if (unlikely( useconds < 0 || useconds >= MILLION ))
     {
         errno = EINVAL;
         return -1;
@@ -1068,8 +1117,8 @@ static int DoGetRUsage( HANDLE hProcess, struct rusage* r_usage )
 
     liWork.QuadPart /= 10;  // (convert to microseconds)
 
-    r_usage->ru_stime.tv_sec  = (long)(liWork.QuadPart / 1000000);
-    r_usage->ru_stime.tv_usec = (long)(liWork.QuadPart % 1000000);
+    r_usage->ru_stime.tv_sec  = (long)(liWork.QuadPart / MILLION);
+    r_usage->ru_stime.tv_usec = (long)(liWork.QuadPart % MILLION);
 
     // User time...
 
@@ -1078,8 +1127,8 @@ static int DoGetRUsage( HANDLE hProcess, struct rusage* r_usage )
 
     liWork.QuadPart /= 10;  // (convert to microseconds)
 
-    r_usage->ru_utime.tv_sec  = (long)(liWork.QuadPart / 1000000);
-    r_usage->ru_utime.tv_usec = (long)(liWork.QuadPart % 1000000);
+    r_usage->ru_utime.tv_sec  = (long)(liWork.QuadPart / MILLION);
+    r_usage->ru_utime.tv_usec = (long)(liWork.QuadPart % MILLION);
 
     return 0;
 }
