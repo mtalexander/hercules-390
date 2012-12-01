@@ -28,6 +28,8 @@
 /*-------------------------------------------------------------------*/
 U8 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetchb ))( VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -67,6 +69,8 @@ U8 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetchb ))( VADR addr, MEMBLK* pMEMBLK )
 /*-------------------------------------------------------------------*/
 void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstoreb ))( U8 byt, VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -106,6 +110,8 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstoreb ))( U8 byt, VADR addr, MEMBLK* pMEM
 /*-------------------------------------------------------------------*/
 U16 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetch2 ))( VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -168,6 +174,8 @@ U16 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetch2 ))( VADR addr, MEMBLK* pMEMBLK )
 /*-------------------------------------------------------------------*/
 void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstore2 ))( U16 val, VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -232,6 +240,8 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstore2 ))( U16 val, VADR addr, MEMBLK* pME
 /*-------------------------------------------------------------------*/
 U32 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetch4 ))( VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -297,6 +307,8 @@ U32 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetch4 ))( VADR addr, MEMBLK* pMEMBLK )
 /*-------------------------------------------------------------------*/
 void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstore4 ))( U32 val, VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -363,6 +375,8 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstore4 ))( U32 val, VADR addr, MEMBLK* pME
 /*-------------------------------------------------------------------*/
 U64 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetch8 ))( VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -428,6 +442,8 @@ U64 (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetch8 ))( VADR addr, MEMBLK* pMEMBLK )
 /*-------------------------------------------------------------------*/
 void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstore8 ))( U64 val, VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -490,11 +506,13 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstore8 ))( U64 val, VADR addr, MEMBLK* pME
 }
 
 /*-------------------------------------------------------------------*/
-/* Fetch a 1 to MAX_SYMLEN character operand from virtual storage    */
-/* len = size of operand minus 1                                     */
+/* Fetch a 1 to PAGEFRAME_PAGESIZE character operand from virtual    */
+/* storage; len = size of operand minus 1                            */
 /*-------------------------------------------------------------------*/
 void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetchc ))( U8* dst, U16 len, VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -550,11 +568,13 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vfetchc ))( U8* dst, U16 len, VADR addr, ME
 }
 
 /*-------------------------------------------------------------------*/
-/* Store 1 to MAX_SYMLEN characters into virtual storage operand     */
-/* len = size of operand minus 1                                     */
+/* Store 1 to PAGEFRAME_PAGESIZE characters into operand virtual     */
+/* storage; len = size of operand minus 1                            */
 /*-------------------------------------------------------------------*/
 void (CMPSC_FASTCALL ARCH_DEP( cmpsc_vstorec ))( U8* src, U16 len, VADR addr, MEMBLK* pMEMBLK )
 {
+    addr &= ADDRESS_MAXWRAP( pMEMBLK->regs );
+
     if (unlikely(!pMEMBLK->maddr[0] || addr < pMEMBLK->vpagebeg))
     {
         pMEMBLK->vpagebeg = (addr & PAGEFRAME_PAGEMASK);
@@ -626,10 +646,14 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_SetREGS ))( CMPSCBLK* pCMPSCBLK, REGS* regs
 
     /* Register 0 is input-only and thus not modified.
 
-    SET_GR_A( 0, regs, ((GREG) pCMPSCBLK->st   << 16) |
-                       ((GREG) pCMPSCBLK->cdss << 12) |
-                       ((GREG) pCMPSCBLK->f1   <<  9) |
-                       ((GREG)   expand        <<  8) );
+    SET_GR_A( 0, regs,
+    (0
+        | ((GREG)   zeropad       << 17)
+        | ((GREG) pCMPSCBLK->st   << 16)
+        | ((GREG) pCMPSCBLK->cdss << 12)
+        | ((GREG) pCMPSCBLK->f1   <<  9)
+        | ((GREG)   expand        <<  8)
+    ));
     */
 
     SET_GR_A( 1, regs, ((GREG) pCMPSCBLK->pDict     ) |
@@ -638,10 +662,10 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_SetREGS ))( CMPSCBLK* pCMPSCBLK, REGS* regs
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// (same thing but including GR0 too. Used only by test tool utility)
+// (same thing but including GR0 too. Used only by utility test tool)
 
 #if defined( NOT_HERC )
-void (CMPSC_FASTCALL ARCH_DEP( cmpsc_SetREGS_R0_too ))( CMPSCBLK* pCMPSCBLK, REGS* regs, int r1, int r2, U8 expand )
+void (CMPSC_FASTCALL ARCH_DEP( util_cmpsc_SetREGS ))( CMPSCBLK* pCMPSCBLK, REGS* regs, int r1, int r2, U8 expand, U8 zeropad )
 {
     SET_GR_A( r1,     regs, (VADR) pCMPSCBLK->pOp1  );
     SET_GR_A( r2,     regs, (VADR) pCMPSCBLK->pOp2  );
@@ -653,10 +677,14 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_SetREGS_R0_too ))( CMPSCBLK* pCMPSCBLK, REG
 
     /* (for the convenience of the utility testing tool) */
 
-    SET_GR_A( 0, regs, ((GREG) pCMPSCBLK->st   << 16) |
-                       ((GREG) pCMPSCBLK->cdss << 12) |
-                       ((GREG) pCMPSCBLK->f1   <<  9) |
-                       ((GREG)   expand        <<  8) );
+    SET_GR_A( 0, regs,
+    (0
+        | ((GREG)   zeropad       << 17)
+        | ((GREG) pCMPSCBLK->st   << 16)
+        | ((GREG) pCMPSCBLK->cdss << 12)
+        | ((GREG) pCMPSCBLK->f1   <<  9)
+        | ((GREG)   expand        <<  8)
+    ));
 
     SET_GR_A( 1, regs, ((GREG) pCMPSCBLK->pDict     ) |
                        ((GREG) pCMPSCBLK->stt  <<  3) |
@@ -686,6 +714,11 @@ void (CMPSC_FASTCALL ARCH_DEP( cmpsc_SetCMPSC ))( CMPSCBLK* pCMPSCBLK, REGS* reg
     pCMPSCBLK->f1       = (GR0 >>  9) & 0x01;
     pCMPSCBLK->cdss     = (GR0 >> 12) & 0x0F;
     pCMPSCBLK->st       = (GR0 >> 16) & 0x01;
+#if defined(_FEATURE_CMPSC_ENHANCEMENT_FACILITY)
+    if (FACILITY_ENABLED( CMPSC_ENH, regs ))
+    pCMPSCBLK->zp       = (GR0 >> 17) & 0x01; else
+#endif // defined(_FEATURE_CMPSC_ENHANCEMENT_FACILITY)
+    pCMPSCBLK->zp       = FALSE;
 
     pCMPSCBLK->cbn      = (GR1 &  0x007);
     pCMPSCBLK->stt      = (GR1 &  0xFFF) >>  3;
