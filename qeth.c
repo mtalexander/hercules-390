@@ -17,6 +17,7 @@
 /*                 netmask <netmask of TAP adapter>                  */
 /*                 mtu     <mtu of TAP adapter>                      */
 /*                 chpid   <channel path id>                         */
+/*                 dev     <name of TAP adapter>                     */
 /*                 debug                                             */
 /*                                                                   */
 /* When using a bridged configuration no parameters are required     */
@@ -43,6 +44,7 @@
 #include "qeth.h"
 #include "mpc.h"
 #include "tuntap.h"
+#include "ctcadpt.h"
 
 #define QETH_DEBUG
 
@@ -79,16 +81,22 @@
 /*-------------------------------------------------------------------*/
 /* Functions, entirely internal to qeth.c                            */
 /*-------------------------------------------------------------------*/
-void process_cm_enable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_cm_setup( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_cm_takedown( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_cm_disable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_ulp_enable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_ulp_setup( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_dm_act( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_ulp_takedown( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_ulp_disable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
-void process_unknown_puk( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk );
+OSA_BHR* process_cm_enable( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_cm_setup( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_cm_takedown( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_cm_disable( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_ulp_enable( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_ulp_setup( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_dm_act( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_ulp_takedown( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_ulp_disable( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+OSA_BHR* process_unknown_puk( DEVBLK*, MPC_TH*, MPC_RRH*, MPC_PUK* );
+
+OSA_BHR* alloc_buffer( DEVBLK*, int );
+void*    add_buffer_to_chain_and_signal_event( OSA_GRP*, OSA_BHR* );
+void*    add_buffer_to_chain( OSA_GRP*, OSA_BHR* );
+OSA_BHR* remove_buffer_from_chain( OSA_GRP* );
+void*    remove_and_free_any_buffers_on_chain( OSA_GRP* );
 
 
 /*-------------------------------------------------------------------*/
@@ -200,6 +208,8 @@ static BYTE qeth_immed_commands [256] =
 
 
 #if defined(QETH_DEBUG)
+//  void  mpc_display_stuff( DEVBLK* pDEVBLK, char* cWhat, BYTE* pAddr, int iLen, BYTE bDir )
+//        mpc_display_stuff( dev, "???", iobuf, length, FROM_GUEST );
 static inline void DUMP(DEVBLK *dev, char* name, void* ptr, int len)
 {
 int i;
@@ -354,7 +364,8 @@ static inline void clr_dsci(DEVBLK *dev, BYTE bits)
 static void osa_adapter_cmd(DEVBLK *dev, MPC_TH *req_th)
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
-MPC_TH  *rsp_th = (MPC_TH*)grp->rspbf;
+
+OSA_BHR *rsp_bhr;
 
 MPC_RRH *req_rrh;
 MPC_PH  *req_ph;
@@ -374,44 +385,33 @@ U16 offph;
         {
             MPC_PUK *req_puk;
 
-            /* Display the request MPC_TH etc., maybe */
-            if( grp->debug )
-            {
-                mpc_display_description( dev, "CM request" );
-                mpc_display_osa_th_etc( dev, req_th, FROM_GUEST, 0 );
-            }
-
             req_puk = mpc_point_puk( dev, req_th, req_rrh );
 
             switch(req_puk->type) {
 
             case PUK_TYPE_ENABLE:
-                process_cm_enable( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_cm_enable( dev, req_th, req_rrh, req_puk );
                 break;
 
             case PUK_TYPE_SETUP:
-                process_cm_setup( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_cm_setup( dev, req_th, req_rrh, req_puk );
                 break;
 
             case PUK_TYPE_TAKEDOWN:
-                process_cm_takedown( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_cm_takedown( dev, req_th, req_rrh, req_puk );
                 break;
 
             case PUK_TYPE_DISABLE:
-                process_cm_disable( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_cm_disable( dev, req_th, req_rrh, req_puk );
                 break;
 
             default:
-                process_unknown_puk( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_unknown_puk( dev, req_th, req_rrh, req_puk );
 
             }
 
-            /* Display the response MPC_TH etc., maybe */
-            if( grp->debug && grp->rspsz )
-            {
-                mpc_display_description( dev, "CM response" );
-                mpc_display_osa_th_etc( dev, rsp_th, TO_GUEST, 0 );
-            }
+            // Add response buffer to chain.
+            add_buffer_to_chain_and_signal_event( grp, rsp_bhr );
 
         }
         break;
@@ -420,20 +420,13 @@ U16 offph;
         {
             MPC_PUK *req_puk;
 
-            /* Display the request MPC_TH etc., maybe */
-            if( grp->debug )
-            {
-                mpc_display_description( dev, "ULP request" );
-                mpc_display_osa_th_etc( dev, req_th, FROM_GUEST, 0 );
-            }
-
             req_puk = mpc_point_puk(dev,req_th,req_rrh);
 
             switch(req_puk->type) {
 
             case PUK_TYPE_ENABLE:
-                process_ulp_enable( dev, req_th, req_rrh, req_puk );
-                if( !grp->rspsz )
+                rsp_bhr = process_ulp_enable( dev, req_th, req_rrh, req_puk );
+                if( !rsp_bhr )
                     break;
 
                 VERIFY
@@ -479,80 +472,72 @@ U16 offph;
                 break;
 
             case PUK_TYPE_SETUP:
-                process_ulp_setup( dev, req_th, req_rrh, req_puk );
-                break;
-
-            case PUK_TYPE_TAKEDOWN:
-                process_ulp_takedown( dev, req_th, req_rrh, req_puk );
-                break;
-
-            case PUK_TYPE_DISABLE:
-                process_ulp_disable( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_ulp_setup( dev, req_th, req_rrh, req_puk );
                 break;
 
             case PUK_TYPE_ACTIVE:
-                process_dm_act( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_dm_act( dev, req_th, req_rrh, req_puk );
+                break;
+
+            case PUK_TYPE_TAKEDOWN:
+                rsp_bhr = process_ulp_takedown( dev, req_th, req_rrh, req_puk );
+                break;
+
+            case PUK_TYPE_DISABLE:
+                rsp_bhr = process_ulp_disable( dev, req_th, req_rrh, req_puk );
                 break;
 
             default:
-                process_unknown_puk( dev, req_th, req_rrh, req_puk );
+                rsp_bhr = process_unknown_puk( dev, req_th, req_rrh, req_puk );
 
             }
 
-            /* Display the response MPC_TH etc., maybe */
-            if( grp->debug && grp->rspsz )
-            {
-                mpc_display_description( dev, "ULP response" );
-                mpc_display_osa_th_etc( dev, rsp_th, TO_GUEST, 0 );
-            }
+            // Add response buffer to chain.
+            add_buffer_to_chain_and_signal_event( grp, rsp_bhr );
 
         }
         break;
 
     case RRH_TYPE_IPA:
         {
+            MPC_TH  *rsp_th;
             MPC_RRH *rsp_rrh;
             MPC_PH  *rsp_ph;
             MPC_IPA *ipa;
 
             U32      rqsize;
-//          U32      offdata;
+            U32      offdata;
+            U32      lendata;
 //          U32      ackseq;
 
-            /* Display the request MPC_TH etc., maybe */
-            if( grp->debug )
-            {
-                mpc_display_description( dev, "IPA request" );
-                mpc_display_osa_th_etc( dev, req_th, FROM_GUEST, 0 );
-            }
-
-            /* Copy request to response buffer */
+            /* Allocate a buffer to which the request will be copied */
+            /* and then modified, to become the response.            */
             FETCH_FW(rqsize,req_th->length);
-            memcpy(rsp_th,req_th,rqsize < RSP_BUFSZ ? rqsize : RSP_BUFSZ);
-            grp->rspsz = rqsize;
+            rsp_bhr = alloc_buffer( dev, rqsize+100 );
+            if (!rsp_bhr)
+                break;
+            rsp_bhr->datalen = rqsize;
+
+            /* Point to response MPC_TH. */
+            rsp_th = (MPC_TH*)((BYTE*)rsp_bhr + SizeBHR);
+
+            /* Copy request to response buffer. */
+            memcpy(rsp_th,req_th,rqsize);
 
             /* Point to response MPC_RRH and MPC_PH. */
             rsp_rrh = (MPC_RRH*)((BYTE*)rsp_th+offrrh);
             rsp_ph = (MPC_PH*)((BYTE*)rsp_rrh+offph);
 
+            /* Get the length of and point to response MPC_IPA and associated command. */
+            FETCH_F3( lendata, rsp_ph->lendata );
+            FETCH_FW( offdata, rsp_ph->offdata );
+            ipa = (MPC_IPA*)((BYTE*)rsp_th + offdata);
+
             /* Modify the response MPC_TH and MPC_RRH. */
-            STORE_FW( rsp_th->seqnum, ++grp->seqnumth );
-//          STORE_FW( rsp_rrh->seqnum, ++grp->seqnumcm );
+            STORE_FW( rsp_th->seqnum, 0 );
+            STORE_HW( rsp_th->unknown10, 0x0FFC );        /* !!! */
+            rsp_rrh->proto = PROTOCOL_UNKNOWN;
             memcpy( rsp_rrh->token, grp->gtulpconn, MPC_TOKEN_LENGTH );
-
-//          /* Update ACK Sequence Number */
-//          FETCH_FW(ackseq,req_rrh->seqnum);
-//          ackseq++;
-//          STORE_FW(rsp_rrh->ackseq,ackseq);
-
-            /* Point to RESPONSE MPC_IPA. */
-            ipa = mpc_point_ipa(dev,rsp_th,rsp_rrh);
-
-//          DUMP(dev, "IPA",ipa,sizeof(MPC_IPA));
-//          FETCH_FW(offdata,req_ph->offdata);
-//          if(offdata > 0x400)
-//              return;
-//          DUMP(dev, "REQ",(ipa+1),offdata-sizeof(MPC_IPA));
 
             switch(ipa->cmd) {
 
@@ -562,7 +547,7 @@ U16 offph;
                 U32 cmd;
 
                     FETCH_FW(cmd,sap->cmd);
-                    DBGTRC(dev, "Set Adapter Parameters: %8.8x\n",cmd);
+                    DBGTRC(dev, "SETADPPARMS (Set Adapter Parameters: %8.8x)\n",cmd);
 
                     switch(cmd) {
 
@@ -574,6 +559,43 @@ U16 offph;
 // STORE_FW(qry->suppcm, 0xFFFFFFFF); /* ZZ */
                             STORE_HW(sap->rc,IPA_RC_OK);
                             STORE_HW(ipa->rc,IPA_RC_OK);
+                        }
+                        break;
+
+                    case IPA_SAP_SETMAC:
+                        {
+                        SAP_SMA *sma = (SAP_SMA*)(sap+1);
+                        U32 cmd;
+                        MAC mac;
+
+                            FETCH_FW(cmd,sma->cmd);
+                            switch(cmd) {
+
+                            case IPA_SAP_SMA_CMD_READ:
+                                DBGTRC(dev, "SETMAC Read MAC address\n");
+                                if(grp->tthwaddr) {
+                                    if (ParseMAC( grp->tthwaddr, mac ) == 0 ) {
+                                        STORE_FW(sap->suppcm,0x93020000);   /* !!!! */
+                                        STORE_FW(sap->resv004,0x93020000);  /* !!!! */
+                                        STORE_FW(sma->asize,IFHWADDRLEN);
+                                        STORE_FW(sma->nomacs,1);
+                                        memcpy(sma->addr, &mac, IFHWADDRLEN);
+                                    }
+                                }
+                                STORE_HW(sap->rc,IPA_RC_OK);
+                                STORE_HW(ipa->rc,IPA_RC_OK);
+                                break;
+
+//                          case IPA_SAP_SMA_CMD_REPLACE:
+//                          case IPA_SAP_SMA_CMD_ADD:
+//                          case IPA_SAP_SMA_CMD_DEL:
+//                          case IPA_SAP_SMA_CMD_RESET:
+
+                            default:
+                                DBGTRC(dev, "SETMAC unsupported command (%08x)\n",cmd);
+                                STORE_HW(sap->rc,IPA_RC_UNSUPPORTED_SUBCMD);
+                                STORE_HW(ipa->rc,IPA_RC_UNSUPPORTED_SUBCMD);
+                            }
                         }
                         break;
 
@@ -589,24 +611,17 @@ U16 offph;
                         }
                         break;
 
-                    case IPA_INBOUND_CHECKSUM:
-                        DBGTRC(dev, "Set Inbound Checksum\n");
+                    case IPA_SAP_SETACCESS:
+                        DBGTRC(dev, "Set Access\n");
                         STORE_HW(sap->rc,IPA_RC_OK);
                         STORE_HW(ipa->rc,IPA_RC_OK);
-                        break;
-
-                    case IPA_SOURCE_MAC:
-                    {
-                        DBGTRC(dev, "Source MAC\n");
-                        STORE_HW(sap->rc,IPA_RC_OK);
-                        STORE_HW(ipa->rc,IPA_RC_OK);
-                    }
                         break;
 
                     default:
                         DBGTRC(dev, "Invalid SetAdapter SubCmd(%08x)\n",cmd);
                         STORE_HW(sap->rc,IPA_RC_UNSUPPORTED_SUBCMD);
                         STORE_HW(ipa->rc,IPA_RC_UNSUPPORTED_SUBCMD);
+
                     }
 
                 }
@@ -630,7 +645,9 @@ U16 offph;
                     ))
                         STORE_HW(ipa->rc,IPA_RC_FFFF);
                     else
+                    {
                         STORE_HW(ipa->rc,IPA_RC_OK);
+                    }
                 }
                 break;
 
@@ -694,35 +711,87 @@ U16 offph;
                 break;
 
             case IPA_CMD_SETIP:
-            {
-            char ipaddr[16];
-//          char ipmask[16];
-            BYTE *ip = (BYTE*)(ipa+1);
+                {
+                char ipaddr[16];
+//              char ipmask[16];
+                BYTE *ip = (BYTE*)(ipa+1);
+                U16  proto;
 // ZZ FIXME WE ALSO NEED TO SUPPORT IPV6 HERE
 
-                DBGTRC(dev, "L3 Set IP\n");
+                    DBGTRC(dev, "SETIP (L3 Set IP)\n");
 
-                snprintf(ipaddr,sizeof(ipaddr),"%d.%d.%d.%d",ip[0],ip[1],ip[2],ip[3]);
-//              snprintf(ipmask,sizeof(ipmask),"%d.%d.%d.%d",ip[4],ip[5],ip[6],ip[7]);
+                    FETCH_HW(proto,ipa->proto);
 
-                VERIFY(!TUNTAP_SetDestAddr(grp->ttdevn,ipaddr));
+                    if (proto == IPA_PROTO_IPV4)
+                    {
+                        snprintf(ipaddr,sizeof(ipaddr),"%d.%d.%d.%d",ip[0],ip[1],ip[2],ip[3]);
+                        VERIFY(!TUNTAP_SetDestAddr(grp->ttdevn,ipaddr));
+
 #if defined( OPTION_TUNTAP_SETNETMASK )
-//              VERIFY(!TUNTAP_SetNetMask(grp->ttdevn,ipmask));
+//                      snprintf(ipmask,sizeof(ipmask),"%d.%d.%d.%d",ip[4],ip[5],ip[6],ip[7]);
+//                      VERIFY(!TUNTAP_SetNetMask(grp->ttdevn,ipmask));
 #endif /*defined( OPTION_TUNTAP_SETNETMASK )*/
-                STORE_HW(ipa->rc,IPA_RC_OK);
-            }
+                    }
+                    else if (proto == IPA_PROTO_IPV6)
+                    {
+                        /* Hmm... What does one do with an IPv6 address? */
+                        /* SetDestAddr isn't valid for IPv6.             */
+                    }
+                    STORE_HW(ipa->rc,IPA_RC_OK);
+                }
                 break;
 
             case IPA_CMD_QIPASSIST:
-                DBGTRC(dev, "L3 Query IP Assist\n");
-                STORE_FW(ipa->ipas,IPA_SUPP);
-// STORE_FW(ipa->ipas, 0xFFFFFFFF); /* ZZ */
+                DBGTRC(dev, "QIPASSIST (L3 Query IP Assist)\n");
+                grp->ipae |= IPA_SETADAPTERPARMS;
                 STORE_HW(ipa->rc,IPA_RC_OK);
                 break;
 
             case IPA_CMD_SETASSPARMS:
-                DBGTRC(dev, "L3 Set IP Assist parameters\n");
-                STORE_HW(ipa->rc,IPA_RC_OK);
+                {
+                MPC_IPA_SAS *sas = (MPC_IPA_SAS*)(ipa+1);
+                U32 ano;
+                U16 cmd;
+
+                    FETCH_FW(ano,sas->hdr.ano);    /* Assist number */
+                    FETCH_HW(cmd,sas->hdr.cmd);    /* Command code */
+                    DBGTRC(dev, "SETASSPARMS (L3 Set IP Assist parameters: %8.8x, %4.4x)\n",ano,cmd);
+
+                    if (!(ano & grp->ipas)) {
+                        STORE_HW(ipa->rc,IPA_RC_NOTSUPP);
+                        break;
+                    }
+
+                    switch(cmd) {
+
+                    case IPA_SAS_CMD_START:
+                        grp->ipae |= ano;
+                        STORE_HW(ipa->rc,IPA_RC_OK);
+                        STORE_HW(sas->hdr.rc,IPA_RC_OK);
+                        break;
+
+                    case IPA_SAS_CMD_STOP:
+                        grp->ipae &= (0xFFFFFFFF - ano);
+                        STORE_HW(ipa->rc,IPA_RC_OK);
+                        STORE_HW(sas->hdr.rc,IPA_RC_OK);
+                        break;
+
+                    case IPA_SAS_CMD_CONFIGURE:
+                    case IPA_SAS_CMD_ENABLE:
+                    case IPA_SAS_CMD_0005:
+                    case IPA_SAS_CMD_0006:
+                        STORE_HW(ipa->rc,IPA_RC_OK);
+                        STORE_HW(sas->hdr.rc,IPA_RC_OK);
+                        break;
+
+                    default:
+                        DBGTRC(dev, "SETASSPARMS unsupported command\n");
+                    /*  STORE_HW(sas->hdr.rc,IPA_RC_UNSUPPORTED_SUBCMD);  */
+                        STORE_HW(ipa->rc,IPA_RC_UNSUPPORTED_SUBCMD);
+                    }
+
+                }
+                /* end case IPA_CMD_SETASSPARMS: */
                 break;
 
             case IPA_CMD_SETIPM:
@@ -762,16 +831,13 @@ U16 offph;
             /* end switch(ipa->cmd) */
 
             ipa->iid = IPA_IID_ADAPTER | IPA_IID_REPLY;
+            grp->ipae &= grp->ipas;
+            STORE_FW(ipa->ipas,grp->ipas);
+            if (lendata >= sizeof(MPC_IPA))
+                STORE_FW(ipa->ipae,grp->ipae);
 
-//          DUMP(dev, "IPA_HDR RSP",ipa,sizeof(MPC_IPA));
-//          DUMP(dev, "IPA_REQ RSP",(ipa+1),offdata-sizeof(MPC_IPA));
-
-            /* Display the response MPC_TH etc., maybe */
-            if( grp->debug )
-            {
-                mpc_display_description( dev, "IPA response" );
-                mpc_display_osa_th_etc( dev, rsp_th, TO_GUEST, 0 );
-            }
+            // Add response buffer to chain.
+            add_buffer_to_chain_and_signal_event( grp, rsp_bhr );
 
         }
         /* end case RRH_TYPE_IPA: */
@@ -792,17 +858,16 @@ U16 offph;
 static void osa_device_cmd(DEVBLK *dev, MPC_IEA *iea)
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
-MPC_IEAR *iear = (MPC_IEAR*)grp->rspbf;
+OSA_BHR *rsp_bhr;
+MPC_IEAR *iear;
 U16 reqtype;
 
-    /* Display the IEA, maybe */
-    if( grp->debug )
-    {
-        mpc_display_description( dev, "IDX ACTIVATE request" );
-        mpc_display_osa_iea( dev, iea, FROM_GUEST );
-    }
-
-    memset(iear, 0, sizeof(MPC_IEAR));
+    /* Allocate a buffer in which the IEAR will be built. */
+    rsp_bhr = alloc_buffer( dev, sizeof(MPC_IEAR)+10 );
+    if (!rsp_bhr)
+        return;
+    rsp_bhr->datalen = sizeof(MPC_IEAR);
+    iear = (MPC_IEAR*)((BYTE*)rsp_bhr + SizeBHR);
 
     FETCH_HW(reqtype, iea->type);
 
@@ -828,6 +893,8 @@ U16 reqtype;
     case IDX_ACT_TYPE_WRITE:
 
         memcpy( grp->gtissue, iea->token, MPC_TOKEN_LENGTH );  /* Remember guest token issuer */
+        grp->ipas = IPA_SUPP;
+        grp->ipae = 0;
 
         if((iea->port & IDX_ACT_PORT_MASK) != OSA_PORTNO)
         {
@@ -848,17 +915,16 @@ U16 reqtype;
     default:
         DBGTRC(dev, _("QETH: IDX ACTIVATE Invalid Request %4.4x for device %4.4x\n"),reqtype,dev->devnum);
         dev->qdio.idxstate = MPC_IDX_STATE_INACTIVE;
+
+        // Free the buffer.
+        free( rsp_bhr );
+        rsp_bhr = NULL;
+
         break;
     }
 
-    grp->rspsz = sizeof(MPC_IEAR);
-
-    /* Display the IEAR, maybe */
-    if( grp->debug )
-    {
-        mpc_display_description( dev, "IDX ACTIVATE response" );
-        mpc_display_osa_iear( dev, iear, TO_GUEST );
-    }
+    // Add response buffer to chain.
+    add_buffer_to_chain_and_signal_event( grp, rsp_bhr );
 }
 
 
@@ -969,7 +1035,10 @@ int nobuff = 1;
                                 olen = TUNTAP_Read(grp->ttfd, buf+sizeof(OSA_HDR2), len-sizeof(OSA_HDR2));
                                 PTT_QETH_TIMING_DEBUG( PTT_CL_INF, "af tt read", ns, len-sizeof(OSA_HDR2), olen );
 if(olen > 0)
-{ DUMP(dev, "INPUT TAP",buf+sizeof(OSA_HDR2),olen); }
+if( grp->debug )
+{
+mpc_display_stuff( dev, "INPUT TAP", buf+sizeof(OSA_HDR2), olen, ' ' );
+}
 if (olen > 0 && !validate_mac(buf+sizeof(OSA_HDR2),MAC_TYPE_ANY,grp))
 { DBGTRC(dev, "INPUT DROPPED, INVALID MAC\n"); }
                                 nobuff = 0;
@@ -1002,9 +1071,12 @@ if (olen > 0 && !validate_mac(buf+sizeof(OSA_HDR2),MAC_TYPE_ANY,grp))
                             STORE_FW(sbal->sbale[ns].length,olen+sizeof(OSA_HDR2));
 if(sa && la && len)
 {
+if( grp->debug )
+{
 DBGTRC(dev, "SBAL(%d): %llx ADDR: %llx LEN: %d ",ns,sa,la,len);
 DBGTRC(dev, "FLAGS %2.2x %2.2x\n",sbal->sbale[ns].flags[0],sbal->sbale[ns].flags[1]);
-DUMP(dev, "INPUT BUF",hdr2,olen+sizeof(OSA_HDR2));
+mpc_display_stuff( dev, "INPUT BUF", (BYTE*)hdr2, olen+sizeof(OSA_HDR2), ' ' );
+}
 }
                         }
                         else
@@ -1071,7 +1143,10 @@ DUMP(dev, "INPUT BUF",hdr2,olen+sizeof(OSA_HDR2));
             if(n > 0)
             {
                 grp->reqpci = TRUE;
-DUMP(dev, "TAP DROPPED",buff,n);
+if( grp->debug )
+{
+mpc_display_stuff( dev, "TAP DROPPED", (BYTE*)&buff, n, ' ' );
+}
             }
 #if defined( OPTION_W32_CTCI )
         } while (n > 0);
@@ -1148,9 +1223,12 @@ int mq = dev->qdio.o_qcnt;
 
 if(sa && la && len)
 {
+if( grp->debug )
+{
 DBGTRC(dev, "SBAL(%d): %llx ADDR: %llx LEN: %d ",ns,sa,la,len);
 DBGTRC(dev, "FLAGS %2.2x %2.2x\n",sbal->sbale[ns].flags[0],sbal->sbale[ns].flags[1]);
-DUMP(dev, "OUTPUT BUF",buf,len);
+mpc_display_stuff( dev, "OUTPUT BUF", buf, len, ' ' );
+}
 }
                         if(len > sizeof(OSA_HDR2))
                         {
@@ -1250,16 +1328,13 @@ int i;
 
             initialize_condition(&grp->qcond);
             initialize_lock(&grp->qlock);
+            initialize_lock(&grp->qblock);
 
             /* Open write signalling pipe */
             create_pipe(grp->ppfd);
 
             /* Set Non-Blocking mode */
             socket_set_blocking_mode(grp->ppfd[0],0);
-
-            /* Allocate reponse buffer */
-            grp->rspbf = malloc(RSP_BUFSZ);
-            grp->rspsz = 0;
 
             /* Set defaults */
 #if defined( OPTION_W32_CTCI )
@@ -1322,6 +1397,11 @@ int i;
             else
                 dev->pmcw.chpid[0] = chpid;
 
+            continue;
+        }
+        else if(!strcasecmp("dev",argv[i]) && (i+1) < argc)
+        {
+            strlcpy( grp->ttdevn, argv[++i], sizeof(grp->ttdevn) );
             continue;
         }
         else
@@ -1409,11 +1489,11 @@ OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
             free(grp->ttnetmask);
         if(grp->ttmtu)
             free(grp->ttmtu);
-        if(grp->rspbf)
-            free(grp->rspbf);
+        remove_and_free_any_buffers_on_chain( grp );
 
         destroy_condition(&grp->qcond);
         destroy_lock(&grp->qlock);
+        destroy_lock(&grp->qblock);
 
         free(dev->group->grp_data);
         dev->group->grp_data = NULL;
@@ -1538,6 +1618,11 @@ int num;                                /* Number of bytes to move   */
     UNREFERENCED(ccwseq);
     UNREFERENCED(chained);
 
+    /* Clear the output */
+    *more = 0;
+    *unitstat = 0;
+    *residual = 0;
+
     /* Command reject if the device group has not been established */
     if((dev->group->acount != OSA_GROUP_SIZE)
       && !(IS_CCW_SENSE(code) || IS_CCW_NOP(code) || (code == OSA_RCD)))
@@ -1546,6 +1631,14 @@ int num;                                /* Number of bytes to move   */
         dev->sense[0] = SENSE_IR;
         *unitstat = CSW_CE | CSW_DE | CSW_UC;
         return;
+    }
+
+    /* Display various information, maybe */
+    if( grp->debug )
+    {
+        // HHC03992 "%1d:%04X %s: Code %02X: Flags %02X: Count %04X: Chained %02X: PrevCode %02X: CCWseq %d"
+        WRMSG(HHC03992, "I", SSID_TO_LCSS(dev->ssid), dev->devnum, dev->typname,
+            code, flags, count, chained, prevcode, ccwseq );
     }
 
     /* Process depending on CCW opcode */
@@ -1557,36 +1650,51 @@ int num;                                /* Number of bytes to move   */
     /* WRITE                                                         */
     /*---------------------------------------------------------------*/
     {
-    MPC_HDR *hdr = (MPC_HDR*)iobuf;
-    U16 ddc;
+    U32      first4;
+    int      length;
 
-        if(!grp->rspsz)
+        /* Get the first 4-bytes of the data. */
+        FETCH_FW( first4, iobuf );
+
+        /* */
+        if (first4 == MPC_TH_FIRST4)
         {
-            FETCH_HW(ddc,hdr->ddc);
-
-            obtain_lock(&grp->qlock);
-            if(ddc == IDX_ACT_DDC)
-                osa_device_cmd(dev,(MPC_IEA*)iobuf);
-            else
-                osa_adapter_cmd(dev, (MPC_TH*)iobuf);
-            release_lock(&grp->qlock);
-
-            signal_condition(&grp->qcond);
-
-            /* Calculate number of bytes to write and set residual count */
-            num = (count < RSP_BUFSZ) ? count : RSP_BUFSZ;
-            *residual = count - num;
-            if (count < RSP_BUFSZ) *more = 1;
-
-            /* Return normal status */
-            *unitstat = CSW_CE | CSW_DE;
+            /* Display the request MPC_TH etc., maybe. */
+            if( grp->debug )
+            {
+                mpc_display_description( dev, "Request" );
+                mpc_display_osa_th_etc( dev, (MPC_TH*)iobuf, FROM_GUEST, 0 );
+            }
+            /* Process the request MPC_TH etc. */
+            osa_adapter_cmd(dev,(MPC_TH*)iobuf);
+        }
+        else if (first4 == MPC_IEA_FIRST4)
+        {
+            /* Display the IEA, maybe. */
+            if( grp->debug )
+            {
+                mpc_display_description( dev, "Request" );
+                mpc_display_osa_iea( dev, (MPC_IEA*)iobuf, FROM_GUEST );
+            }
+            /* Process the IEA. */
+            osa_device_cmd(dev,(MPC_IEA*)iobuf);
         }
         else
         {
-            /* Command reject if no response buffer available */
-            dev->sense[0] = SENSE_CR;
-            *unitstat = CSW_CE | CSW_DE | CSW_UC;
+            /* Display the unrecognised data. */
+            mpc_display_description( dev, "Unrecognised Request" );
+            if (count >= 256)
+                length = 256;
+            else
+                length = count;
+            mpc_display_stuff( dev, "???", iobuf, length, FROM_GUEST );
         }
+
+        /* Return normal status */
+        *unitstat = CSW_CE | CSW_DE;
+        *residual = 0;
+        *more = 0;
+
         break;
     }
 
@@ -1596,46 +1704,93 @@ int num;                                /* Number of bytes to move   */
     /* READ                                                          */
     /*---------------------------------------------------------------*/
     {
-        int rd_size = 0;
+    OSA_BHR *bhr;
+    BYTE    *iodata;
+    int      datalen;
+    U32      first4;
 
-        obtain_lock(&grp->qlock);
-        if(grp->rspsz)
+        /* */
+        for ( ; ; )
         {
-            rd_size = grp->rspsz;
-            memcpy(iobuf,grp->rspbf,rd_size);
-            grp->rspsz = 0;
-        }
-        else
-        {
-            if(dev->qdio.idxstate == MPC_IDX_STATE_ACTIVE)
+
+            /* Remove first, or only, buffer from chain. */
+            bhr = remove_buffer_from_chain( grp );
+            if (bhr)
             {
-                wait_condition(&grp->qcond, &grp->qlock);
-                if(grp->rspsz)
+
+                /* Point to the data and get its length. */
+                iodata = (BYTE*)bhr + SizeBHR;
+                datalen = bhr->datalen;
+
+                /* Get the first 4-bytes of the data. */
+                FETCH_FW( first4, iodata );
+
+                /* */
+                if (first4 == MPC_TH_FIRST4)
                 {
-                    rd_size = grp->rspsz;
-                    memcpy(iobuf,grp->rspbf,rd_size);
-                    grp->rspsz = 0;
+                    MPC_TH *th = (MPC_TH*)iodata;
+
+                    /* Set the transmission header sequence number. */
+                    STORE_FW( th->seqnum, ++grp->seqnumth );
+
+                    /* Display the response MPC_TH etc., maybe. */
+                    if( grp->debug )
+                    {
+                        mpc_display_description( dev, "Response" );
+                        mpc_display_osa_th_etc( dev, (MPC_TH*)iodata, TO_GUEST, 0 );
+                    }
+                }
+                else  /* must be an IEAR */
+                {
+                    /* Display the IEAR, maybe. */
+                    if( grp->debug )
+                    {
+                        mpc_display_description( dev, "Response" );
+                        mpc_display_osa_iear( dev, (MPC_IEAR*)iodata, TO_GUEST );
+                    }
+                }
+
+                /* Set the residual length and normal status. */
+                if (count >= datalen)
+                {
+                    *more     = 0;
+                    *residual = count - datalen;
+                }
+                else
+                {
+                    datalen   = count;
+                    *more     = 1;
+                    *residual = 0;
+                }
+                *unitstat = CSW_CE | CSW_DE;
+
+                /* Copy the data to be read. */
+                memcpy( iobuf, iodata, datalen );
+
+                /* Free the buffer. */
+                free( bhr );
+
+                break;
+            }
+            else
+            {
+                if(dev->qdio.idxstate == MPC_IDX_STATE_ACTIVE)
+                {
+                    obtain_lock(&grp->qlock);
+                    wait_condition(&grp->qcond, &grp->qlock);
+                    release_lock(&grp->qlock);
+                }
+                else
+                {
+                    /* Return unit check with status modifier */
+                    dev->sense[0] = 0;
+                    *unitstat = CSW_CE | CSW_DE | CSW_UC | CSW_SM;
+                    break;
                 }
             }
-        }
-        release_lock(&grp->qlock);
 
-        if(rd_size)
-        {
-            /* Calculate number of bytes to read and set residual count */
-            num = (count < rd_size) ? count : rd_size;
-            *residual = count - num;
-            if (count < rd_size) *more = 1;
+        }   /* for ( ; ; ) */
 
-            /* Return normal status */
-            *unitstat = CSW_CE | CSW_DE;
-        }
-        else
-        {
-            /* Return unit check with status modifier */
-            dev->sense[0] = 0;
-            *unitstat = CSW_CE | CSW_DE | CSW_UC | CSW_SM;
-        }
         break;
     }
 
@@ -1728,7 +1883,6 @@ int num;                                /* Number of bytes to move   */
     /*---------------------------------------------------------------*/
     /* SET INTERFACE IDENTIFIER                                      */
     /*---------------------------------------------------------------*/
-// DUMP(dev, "SID",iobuf,count);
     {
         FETCH_FW(grp->iid,iobuf);
 
@@ -1936,6 +2090,14 @@ int num;                                /* Number of bytes to move   */
 
     } /* end switch(code) */
 
+    /* Display various information, maybe */
+    if( grp->debug )
+    {
+        // HHC03993 "%1d:%04X %s: Status %02X: Residual %04X: More %02X"
+        WRMSG(HHC03993, "I", SSID_TO_LCSS(dev->ssid), dev->devnum, dev->typname,
+            *unitstat, *residual, *more );
+    }
+
 } /* end function qeth_execute_ccw */
 
 
@@ -2047,7 +2209,7 @@ static int qeth_initiate_output_mult(DEVBLK *dev, U32 qmask)
 /*-------------------------------------------------------------------*/
 /* Process the CM_ENABLE request from the guest.                     */
 /*-------------------------------------------------------------------*/
-void process_cm_enable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_cm_enable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
@@ -2055,7 +2217,8 @@ MPC_PUS *req_pus_01;
 MPC_PUS *req_pus_02;
 U16      len_pus_02;
 
-MPC_TH  *rsp_th = (MPC_TH*)grp->rspbf;
+OSA_BHR *rsp_bhr;
+MPC_TH  *rsp_th;
 MPC_RRH *rsp_rrh;
 MPC_PH  *rsp_ph;
 MPC_PUK *rsp_puk;
@@ -2076,41 +2239,43 @@ U16 uLength4;
     if( !req_pus_01 || !req_pus_02 )
     {
          /* FIXME Expected pus not present, error message please. */
-         return;
+         return NULL;
     }
     FETCH_HW( len_pus_02, req_pus_02->length);
 
     // Fix-up various lengths
-    uLength4 = SIZE_PUS_01 +                  // first MPC_PUS
-               len_pus_02;                    // second MPC_PUS
-    uLength3 = SIZE_PUK + uLength4;           // the MPC_PUK and the MPC_PUSs (the data)
-    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;  // the MPC_TH/MPC_RRH/MPC_PH
-    uLength1 = uLength2 + uLength3;           // the MPC_TH/MPC_RRH/MPC_PH and data
+    uLength4 = SIZE_PUS_01 +                     // first MPC_PUS
+               len_pus_02;                       // second MPC_PUS
+    uLength3 = SIZE_PUK + uLength4;              // the MPC_PUK and the MPC_PUSs (the data)
+    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;     // the MPC_TH/MPC_RRH/MPC_PH
+    uLength1 = uLength2 + uLength3;              // the MPC_TH/MPC_RRH/MPC_PH and data
+
+    // Allocate a buffer in which the response will be build.
+    rsp_bhr = alloc_buffer( dev, uLength1+10 );
+    if (!rsp_bhr)
+        return NULL;
+    rsp_bhr->datalen = uLength1;
 
     // Fix-up various pointers
+    rsp_th = (MPC_TH*)((BYTE*)rsp_bhr + SizeBHR);
     rsp_rrh = (MPC_RRH*)((BYTE*)rsp_th + SIZE_TH);
     rsp_ph = (MPC_PH*)((BYTE*)rsp_rrh + SIZE_RRH);
     rsp_puk = (MPC_PUK*)((BYTE*)rsp_ph + SIZE_PH);
     rsp_pus_01 = (MPC_PUS*)((BYTE*)rsp_puk + SIZE_PUK);
     rsp_pus_02 = (MPC_PUS*)((BYTE*)rsp_pus_01 + SIZE_PUS_01);
 
-    // Clear the response buffer.
-    memset( rsp_th, 0, uLength1 );
-    grp->rspsz = uLength1;
-
     // Prepare MPC_TH
     STORE_FW( rsp_th->first4, MPC_TH_FIRST4 );
-    STORE_FW( rsp_th->seqnum, ++grp->seqnumth );
     STORE_FW( rsp_th->offrrh, SIZE_TH );
     STORE_FW( rsp_th->length, uLength1 );
-    STORE_HW( rsp_th->unknown10, 0x1000 );            /* !!! */
+    STORE_HW( rsp_th->unknown10, 0x0FFC );            /* !!! */
     STORE_HW( rsp_th->numrrh, 1 );
 
     // Prepare MPC_RRH
     rsp_rrh->type = RRH_TYPE_CM;
     rsp_rrh->proto = PROTOCOL_UNKNOWN;
     STORE_HW( rsp_rrh->numph, 1 );
-    STORE_FW( rsp_rrh->seqnum, ++grp->seqnumis );
+//  STORE_FW( rsp_rrh->seqnum, ++grp->seqnumis );
     STORE_HW( rsp_rrh->offph, SIZE_RRH );
     STORE_HW( rsp_rrh->lenfida, (U16)uLength3 );
     STORE_F3( rsp_rrh->lenalda, uLength3 );
@@ -2144,20 +2309,21 @@ U16 uLength4;
 //  STORE_DW( rsp_pus_02->vc.pus_02.c.userdata, 0x5555555555555555 );
     memcpy( rsp_pus_02, req_pus_02, len_pus_02 );
 
-    return;
+    return rsp_bhr;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the CM_SETUP request from the guest.                      */
 /*-------------------------------------------------------------------*/
-void process_cm_setup( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_cm_setup( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
 MPC_PUS *req_pus_04;
 MPC_PUS *req_pus_06;
 
-MPC_TH  *rsp_th = (MPC_TH*)grp->rspbf;
+OSA_BHR *rsp_bhr;
+MPC_TH  *rsp_th;
 MPC_RRH *rsp_rrh;
 MPC_PH  *rsp_ph;
 MPC_PUK *rsp_puk;
@@ -2179,21 +2345,28 @@ U16 uLength4;
     if( !req_pus_04 || !req_pus_06 )
     {
          /* FIXME Expected pus not present, error message please. */
-         return;
+         return NULL;
     }
 
     /* Copy the guests CM Connection token from request PUS_TYPE_04. */
     memcpy( grp->gtcmconn, req_pus_04->vc.pus_04.token, MPC_TOKEN_LENGTH );
 
     // Fix-up various lengths
-    uLength4 = SIZE_PUS_04 +                  // first MPC_PUS
-               SIZE_PUS_08 +                  // second MPC_PUS
-               SIZE_PUS_07;                   // third MPC_PUS
-    uLength3 = SIZE_PUK + uLength4;           // the MPC_PUK and the MPC_PUSs (the data)
-    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;  // the MPC_TH/MPC_RRH/MPC_PH
-    uLength1 = uLength2 + uLength3;           // the MPC_TH/MPC_RRH/MPC_PH and data
+    uLength4 = SIZE_PUS_04 +                     // first MPC_PUS
+               SIZE_PUS_08 +                     // second MPC_PUS
+               SIZE_PUS_07;                      // third MPC_PUS
+    uLength3 = SIZE_PUK + uLength4;              // the MPC_PUK and the MPC_PUSs (the data)
+    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;     // the MPC_TH/MPC_RRH/MPC_PH
+    uLength1 = uLength2 + uLength3;              // the MPC_TH/MPC_RRH/MPC_PH and data
+
+    // Allocate a buffer in which the response will be build.
+    rsp_bhr = alloc_buffer( dev, uLength1+10 );
+    if (!rsp_bhr)
+        return NULL;
+    rsp_bhr->datalen = uLength1;
 
     // Fix-up various pointers
+    rsp_th = (MPC_TH*)((BYTE*)rsp_bhr + SizeBHR);
     rsp_rrh = (MPC_RRH*)((BYTE*)rsp_th + SIZE_TH);
     rsp_ph = (MPC_PH*)((BYTE*)rsp_rrh + SIZE_RRH);
     rsp_puk = (MPC_PUK*)((BYTE*)rsp_ph + SIZE_PH);
@@ -2201,23 +2374,18 @@ U16 uLength4;
     rsp_pus_08 = (MPC_PUS*)((BYTE*)rsp_pus_04 + SIZE_PUS_04);
     rsp_pus_07 = (MPC_PUS*)((BYTE*)rsp_pus_08 + SIZE_PUS_08);
 
-    // Clear the response buffer.
-    memset( rsp_th, 0, uLength1 );
-    grp->rspsz = uLength1;
-
     // Prepare MPC_TH
     STORE_FW( rsp_th->first4, MPC_TH_FIRST4 );
-    STORE_FW( rsp_th->seqnum, ++grp->seqnumth );
     STORE_FW( rsp_th->offrrh, SIZE_TH );
     STORE_FW( rsp_th->length, uLength1 );
-    STORE_HW( rsp_th->unknown10, 0x1000 );            /* !!! */
+    STORE_HW( rsp_th->unknown10, 0x0FFC );            /* !!! */
     STORE_HW( rsp_th->numrrh, 1 );
 
     // Prepare MPC_RRH
     rsp_rrh->type = RRH_TYPE_CM;
     rsp_rrh->proto = PROTOCOL_UNKNOWN;
     STORE_HW( rsp_rrh->numph, 1 );
-    STORE_FW( rsp_rrh->seqnum, ++grp->seqnumis );
+//  STORE_FW( rsp_rrh->seqnum, ++grp->seqnumis );
     STORE_HW( rsp_rrh->offph, SIZE_RRH );
     STORE_HW( rsp_rrh->lenfida, (U16)uLength3 );
     STORE_F3( rsp_rrh->lenalda, uLength3 );
@@ -2253,57 +2421,59 @@ U16 uLength4;
     STORE_HW( rsp_pus_07->length, SIZE_PUS_07 );
     rsp_pus_07->what = PUS_WHAT_04;
     rsp_pus_07->type = PUS_TYPE_07;
-    memcpy( rsp_pus_07->vc.pus_07.unknown04+0, req_pus_06->vc.pus_06.unknown04, 2 );
+//  memcpy( rsp_pus_07->vc.pus_07.unknown04+0, req_pus_06->vc.pus_06.unknown04, 2 );
+    STORE_HW( rsp_pus_07->vc.pus_07.unknown04+0, 0x4000 );
     STORE_HW( rsp_pus_07->vc.pus_07.unknown04+2, 0x0000 );
 
-    return;
+    return rsp_bhr;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the CM_TAKEDOWN request from the guest.                   */
 /*-------------------------------------------------------------------*/
-void process_cm_takedown( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_cm_takedown( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
+    UNREFERENCED(grp);
     UNREFERENCED(req_th);
     UNREFERENCED(req_rrh);
     UNREFERENCED(req_puk);
 
     /* There will be no response. */
-    grp->rspsz = 0;
 
-    return;
+    return NULL;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the CM_DISABLE request from the guest.                    */
 /*-------------------------------------------------------------------*/
-void process_cm_disable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_cm_disable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
+    UNREFERENCED(grp);
     UNREFERENCED(req_th);
     UNREFERENCED(req_rrh);
     UNREFERENCED(req_puk);
 
     /* There will be no response. */
-    grp->rspsz = 0;
 
-    return;
+    return NULL;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the ULP_ENABLE request from the guest.                    */
 /*-------------------------------------------------------------------*/
-void process_ulp_enable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_ulp_enable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
 MPC_PUS *req_pus_01;
 MPC_PUS *req_pus_0A;
 
-MPC_TH  *rsp_th = (MPC_TH*)grp->rspbf;
+OSA_BHR *rsp_bhr;
+MPC_TH  *rsp_th;
 MPC_RRH *rsp_rrh;
 MPC_PH  *rsp_ph;
 MPC_PUK *rsp_puk;
@@ -2330,7 +2500,7 @@ U16 uMTU;
     if( !req_pus_01 || !req_pus_0A )
     {
          /* FIXME Expected pus not present, error message please. */
-         return;
+         return NULL;
     }
 
     /* Remember something from request PUS_TYPE_01. */
@@ -2352,36 +2522,40 @@ U16 uMTU;
         uMTU = 1500;
 
     // Fix-up various lengths
-    uLength4 = SIZE_PUS_01 +                  // first MPC_PUS
-               len_rsp_pus_0A;                // second MPC_PUS
-    uLength3 = SIZE_PUK + uLength4;           // the MPC_PUK and the MPC_PUSs (the data)
-    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;  // the MPC_TH/MPC_RRH/MPC_PH
-    uLength1 = uLength2 + uLength3;           // the MPC_TH/MPC_RRH/MPC_PH and data
+    uLength4 = SIZE_PUS_01 +                     // first MPC_PUS
+               len_rsp_pus_0A;                   // second MPC_PUS
+    uLength3 = SIZE_PUK + uLength4;              // the MPC_PUK and the MPC_PUSs (the data)
+    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;     // the MPC_TH/MPC_RRH/MPC_PH
+    uLength1 = uLength2 + uLength3;              // the MPC_TH/MPC_RRH/MPC_PH and data
+
+    // Allocate a buffer in which the response will be build.
+    rsp_bhr = alloc_buffer( dev, uLength1+10 );
+    if (!rsp_bhr)
+        return NULL;
+    rsp_bhr->datalen = uLength1;
 
     // Fix-up various pointers
+    rsp_th = (MPC_TH*)((BYTE*)rsp_bhr + SizeBHR);
     rsp_rrh = (MPC_RRH*)((BYTE*)rsp_th + SIZE_TH);
     rsp_ph = (MPC_PH*)((BYTE*)rsp_rrh + SIZE_RRH);
     rsp_puk = (MPC_PUK*)((BYTE*)rsp_ph + SIZE_PH);
     rsp_pus_01 = (MPC_PUS*)((BYTE*)rsp_puk + SIZE_PUK);
     rsp_pus_0A = (MPC_PUS*)((BYTE*)rsp_pus_01 + SIZE_PUS_01);
 
-    // Clear the response buffer.
-    memset( rsp_th, 0, uLength1 );
-    grp->rspsz = uLength1;
-
     // Prepare MPC_TH
     STORE_FW( rsp_th->first4, MPC_TH_FIRST4 );
-    STORE_FW( rsp_th->seqnum, ++grp->seqnumth );
     STORE_FW( rsp_th->offrrh, SIZE_TH );
     STORE_FW( rsp_th->length, uLength1 );
-    STORE_HW( rsp_th->unknown10, 0x1000 );            /* !!! */
+    STORE_HW( rsp_th->unknown10, 0x0FFC );            /* !!! */
     STORE_HW( rsp_th->numrrh, 1 );
 
     // Prepare MPC_RRH
     rsp_rrh->type = RRH_TYPE_ULP;
-    rsp_rrh->proto = PROTOCOL_UNKNOWN;
+//  rsp_rrh->proto = PROTOCOL_UNKNOWN;
+    rsp_rrh->proto = PROTOCOL_02;
     STORE_HW( rsp_rrh->numph, 1 );
     STORE_FW( rsp_rrh->seqnum, ++grp->seqnumcm );
+    memcpy( rsp_rrh->ackseq, req_rrh->seqnum, 4 );
     STORE_HW( rsp_rrh->offph, SIZE_RRH );
     STORE_HW( rsp_rrh->lenfida, (U16)uLength3 );
     STORE_F3( rsp_rrh->lenalda, uLength3 );
@@ -2403,7 +2577,7 @@ U16 uMTU;
     STORE_HW( rsp_pus_01->length, SIZE_PUS_01 );
     rsp_pus_01->what = PUS_WHAT_04;
     rsp_pus_01->type = PUS_TYPE_01;
-    rsp_pus_01->vc.pus_01.proto = PROTOCOL_LAYER3;
+    rsp_pus_01->vc.pus_01.proto = req_pus_01->vc.pus_01.proto;
     rsp_pus_01->vc.pus_01.unknown05 = 0x04;           /* !!! */
     rsp_pus_01->vc.pus_01.tokenx5 = MPC_TOKEN_X5;
     STORE_FW( rsp_pus_01->vc.pus_01.token, ODTOKEN );
@@ -2414,13 +2588,13 @@ U16 uMTU;
     STORE_HW( rsp_pus_0A->vc.pus_0A.mtu, uMTU );
     rsp_pus_0A->vc.pus_0A.linktype = PUS_LINK_TYPE_FAST_ETH;
 
-    return;
+    return rsp_bhr;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the ULP_SETUP request from the guest.                     */
 /*-------------------------------------------------------------------*/
-void process_ulp_setup( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_ulp_setup( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
@@ -2430,7 +2604,8 @@ MPC_PUS *req_pus_06;
 MPC_PUS *req_pus_0B;
 U16      len_pus_0B;
 
-MPC_TH  *rsp_th = (MPC_TH*)grp->rspbf;
+OSA_BHR *rsp_bhr;
+MPC_TH  *rsp_th;
 MPC_RRH *rsp_rrh;
 MPC_PH  *rsp_ph;
 MPC_PUK *rsp_puk;
@@ -2454,7 +2629,7 @@ U16 uLength4;
     if( !req_pus_04 || !req_pus_06 || !req_pus_0B )
     {
          /* FIXME Expected pus not present, error message please. */
-         return;
+         return NULL;
     }
     FETCH_HW( len_pus_0B, req_pus_0B->length);
 
@@ -2462,15 +2637,22 @@ U16 uLength4;
     memcpy( grp->gtulpconn, req_pus_04->vc.pus_04.token, MPC_TOKEN_LENGTH );
 
     // Fix-up various lengths
-    uLength4 = SIZE_PUS_04 +                  // first MPC_PUS
-               SIZE_PUS_08 +                  // second MPC_PUS
-               SIZE_PUS_07 +                  // third MPC_PUS
-               len_pus_0B;                    // fourth MPC_PUS
-    uLength3 = SIZE_PUK + uLength4;           // the MPC_PUK and the MPC_PUSs (the data)
-    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;  // the MPC_TH/MPC_RRH/MPC_PH
-    uLength1 = uLength2 + uLength3;           // the MPC_TH/MPC_RRH/MPC_PH and data
+    uLength4 = SIZE_PUS_04 +                     // first MPC_PUS
+               SIZE_PUS_08 +                     // second MPC_PUS
+               SIZE_PUS_07 +                     // third MPC_PUS
+               len_pus_0B;                       // fourth MPC_PUS
+    uLength3 = SIZE_PUK + uLength4;              // the MPC_PUK and the MPC_PUSs (the data)
+    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;     // the MPC_TH/MPC_RRH/MPC_PH
+    uLength1 = uLength2 + uLength3;              // the MPC_TH/MPC_RRH/MPC_PH and data
+
+    // Allocate a buffer in which the response will be build.
+    rsp_bhr = alloc_buffer( dev, uLength1+10 );
+    if (!rsp_bhr)
+        return NULL;
+    rsp_bhr->datalen = uLength1;
 
     // Fix-up various pointers
+    rsp_th = (MPC_TH*)((BYTE*)rsp_bhr + SizeBHR);
     rsp_rrh = (MPC_RRH*)((BYTE*)rsp_th + SIZE_TH);
     rsp_ph = (MPC_PH*)((BYTE*)rsp_rrh + SIZE_RRH);
     rsp_puk = (MPC_PUK*)((BYTE*)rsp_ph + SIZE_PH);
@@ -2479,23 +2661,20 @@ U16 uLength4;
     rsp_pus_07 = (MPC_PUS*)((BYTE*)rsp_pus_08 + SIZE_PUS_08);
     rsp_pus_0B = (MPC_PUS*)((BYTE*)rsp_pus_07 + SIZE_PUS_07);
 
-    // Clear the response buffer.
-    memset( rsp_th, 0, uLength1 );
-    grp->rspsz = uLength1;
-
     // Prepare MPC_TH
     STORE_FW( rsp_th->first4, MPC_TH_FIRST4 );
-    STORE_FW( rsp_th->seqnum, ++grp->seqnumth );
     STORE_FW( rsp_th->offrrh, SIZE_TH );
     STORE_FW( rsp_th->length, uLength1 );
-    STORE_HW( rsp_th->unknown10, 0x1000 );            /* !!! */
+    STORE_HW( rsp_th->unknown10, 0x0FFC );            /* !!! */
     STORE_HW( rsp_th->numrrh, 1 );
 
     // Prepare MPC_RRH
     rsp_rrh->type = RRH_TYPE_ULP;
-    rsp_rrh->proto = PROTOCOL_UNKNOWN;
+//  rsp_rrh->proto = PROTOCOL_UNKNOWN;
+    rsp_rrh->proto = PROTOCOL_02;
     STORE_HW( rsp_rrh->numph, 1 );
     STORE_FW( rsp_rrh->seqnum, ++grp->seqnumcm );
+    memcpy( rsp_rrh->ackseq, req_rrh->seqnum, 4 );
     STORE_HW( rsp_rrh->offph, SIZE_RRH );
     STORE_HW( rsp_rrh->lenfida, (U16)uLength3 );
     STORE_F3( rsp_rrh->lenalda, uLength3 );
@@ -2537,19 +2716,20 @@ U16 uLength4;
     // Prepare fourth MPC_PUS
     memcpy( rsp_pus_0B, req_pus_0B, len_pus_0B );
 
-    return;
+    return rsp_bhr;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the DM_ACT request from the guest.                        */
 /*-------------------------------------------------------------------*/
-void process_dm_act( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_dm_act( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
 //C_PUS *req_pus_04;
 
-MPC_TH  *rsp_th = (MPC_TH*)grp->rspbf;
+OSA_BHR *rsp_bhr;
+MPC_TH  *rsp_th;
 MPC_RRH *rsp_rrh;
 MPC_PH  *rsp_ph;
 MPC_PUK *rsp_puk;
@@ -2565,34 +2745,38 @@ U16 uLength4;
     UNREFERENCED(req_puk);
 
     // Fix-up various lengths
-    uLength4 = SIZE_PUS_04;                   // first MPC_PUS
-    uLength3 = SIZE_PUK + uLength4;           // the MPC_PUK and the MPC_PUSs (the data)
-    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;  // the MPC_TH/MPC_RRH/MPC_PH
-    uLength1 = uLength2 + uLength3;           // the MPC_TH/MPC_RRH/MPC_PH and data
+    uLength4 = SIZE_PUS_04;                      // first MPC_PUS
+    uLength3 = SIZE_PUK + uLength4;              // the MPC_PUK and the MPC_PUSs (the data)
+    uLength2 = SIZE_TH + SIZE_RRH + SIZE_PH;     // the MPC_TH/MPC_RRH/MPC_PH
+    uLength1 = uLength2 + uLength3;              // the MPC_TH/MPC_RRH/MPC_PH and data
+
+    // Allocate a buffer in which the response will be build.
+    rsp_bhr = alloc_buffer( dev, uLength1+10 );
+    if (!rsp_bhr)
+        return NULL;
+    rsp_bhr->datalen = uLength1;
 
     // Fix-up various pointers
+    rsp_th = (MPC_TH*)((BYTE*)rsp_bhr + SizeBHR);
     rsp_rrh = (MPC_RRH*)((BYTE*)rsp_th + SIZE_TH);
     rsp_ph = (MPC_PH*)((BYTE*)rsp_rrh + SIZE_RRH);
     rsp_puk = (MPC_PUK*)((BYTE*)rsp_ph + SIZE_PH);
     rsp_pus_04 = (MPC_PUS*)((BYTE*)rsp_puk + SIZE_PUK);
 
-    // Clear the response buffer.
-    memset( rsp_th, 0, uLength1 );
-    grp->rspsz = uLength1;
-
     // Prepare MPC_TH
     STORE_FW( rsp_th->first4, MPC_TH_FIRST4 );
-    STORE_FW( rsp_th->seqnum, ++grp->seqnumth );
     STORE_FW( rsp_th->offrrh, SIZE_TH );
     STORE_FW( rsp_th->length, uLength1 );
-    STORE_HW( rsp_th->unknown10, 0x1000 );            /* !!! */
+    STORE_HW( rsp_th->unknown10, 0x0FFC );            /* !!! */
     STORE_HW( rsp_th->numrrh, 1 );
 
     // Prepare MPC_RRH
     rsp_rrh->type = RRH_TYPE_ULP;
-    rsp_rrh->proto = PROTOCOL_UNKNOWN;
+//  rsp_rrh->proto = PROTOCOL_UNKNOWN;
+    rsp_rrh->proto = PROTOCOL_02;
     STORE_HW( rsp_rrh->numph, 1 );
     STORE_FW( rsp_rrh->seqnum, ++grp->seqnumcm );
+    memcpy( rsp_rrh->ackseq, req_rrh->seqnum, 4 );
     STORE_HW( rsp_rrh->offph, SIZE_RRH );
     STORE_HW( rsp_rrh->lenfida, (U16)uLength3 );
     STORE_F3( rsp_rrh->lenalda, uLength3 );
@@ -2617,50 +2801,51 @@ U16 uLength4;
     rsp_pus_04->vc.pus_04.tokenx5 = MPC_TOKEN_X5;
     memcpy( rsp_pus_04->vc.pus_04.token, grp->gtulpconn, MPC_TOKEN_LENGTH );
 
-    return;
+    return rsp_bhr;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the ULP_TAKEDOWN request from the guest.                  */
 /*-------------------------------------------------------------------*/
-void process_ulp_takedown( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_ulp_takedown( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
+    UNREFERENCED(grp);
     UNREFERENCED(req_th);
     UNREFERENCED(req_rrh);
     UNREFERENCED(req_puk);
 
     /* There will be no response. */
-    grp->rspsz = 0;
 
-    return;
+    return NULL;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process the ULP_DISABLE request from the guest.                   */
 /*-------------------------------------------------------------------*/
-void process_ulp_disable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_ulp_disable( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
+    UNREFERENCED(grp);
     UNREFERENCED(req_th);
     UNREFERENCED(req_rrh);
     UNREFERENCED(req_puk);
 
     /* There will be no response. */
-    grp->rspsz = 0;
 
-    return;
+    return NULL;
 }
 
 /*-------------------------------------------------------------------*/
 /* Process unknown from the guest.                                   */
 /*-------------------------------------------------------------------*/
-void process_unknown_puk( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
+OSA_BHR* process_unknown_puk( DEVBLK* dev, MPC_TH* req_th, MPC_RRH* req_rrh, MPC_PUK* req_puk )
 {
 OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
 
+    UNREFERENCED(grp);
     UNREFERENCED(req_th);
     UNREFERENCED(req_rrh);
     UNREFERENCED(req_puk);
@@ -2668,9 +2853,173 @@ OSA_GRP *grp = (OSA_GRP*)dev->group->grp_data;
     /* FIXME Error message please. */
 
     /* There will be no response. */
-    grp->rspsz = 0;
 
-    return;
+    return NULL;
+}
+
+
+/*--------------------------------------------------------------------*/
+/* alloc_buffer(): Allocate storage for a OSA_BHR and data            */
+/*--------------------------------------------------------------------*/
+OSA_BHR*  alloc_buffer( DEVBLK* dev, int size )
+{
+    OSA_BHR*   bhr;                        // OSA_BHR
+    int        buflen;                     // Buffer length
+    char       etext[40];                  // malloc error text
+
+    // Allocate the buffer.
+    buflen = SizeBHR + size;
+    bhr = malloc( buflen );                // Allocate the buffer
+    if (!bhr)                              // if the allocate was not successful...
+    {
+        // Report the bad news.
+        MSGBUF( etext, "malloc(%n)", &buflen );
+        // HHC03960 "%1d:%04X %s: error in function '%s': '%s'"
+        WRMSG(HHC03960, "E", SSID_TO_LCSS(dev->ssid), dev->devnum, dev->typname,
+                             etext, strerror(errno) );
+        return NULL;
+    }
+
+    // Clear the buffer.
+    memset( bhr, 0, buflen );
+    bhr->arealen = size;
+
+    return bhr;
+}
+
+/*--------------------------------------------------------------------*/
+/* add_buffer_to_chain_and_signal_event(): Add OSA_BHR to end of chn. */
+/*--------------------------------------------------------------------*/
+void*    add_buffer_to_chain_and_signal_event( OSA_GRP* grp, OSA_BHR* bhr )
+{
+
+    // Prepare OSA_BHR for adding to chain.
+    if (!bhr)                              // Any OSA_BHR been passed?
+        return NULL;
+    bhr->next = NULL;                      // Clear the pointer to next OSA_BHR
+
+    // Obtain the buffer chain lock.
+    obtain_lock( &grp->qblock );
+
+    // Add OSA_BHR to end of chain.
+    if (grp->firstbhr)                     // if there are already OSA_BHRs
+    {
+        grp->lastbhr->next = bhr;          // Add the OSA_BHR to
+        grp->lastbhr = bhr;                // the end of the chain
+        grp->numbhr++;                     // Increment number of OSA_BHRs
+    }
+    else
+    {
+        grp->firstbhr = bhr;               // Make the OSA_BHR
+        grp->lastbhr = bhr;                // the only OSA_BHR
+        grp->numbhr = 1;                   // on the chain
+    }
+
+    // Release the buffer chain lock.
+    release_lock( &grp->qblock );
+
+    //
+    obtain_lock( &grp->qlock );
+    signal_condition( &grp->qcond );
+    release_lock( &grp->qlock );
+
+    return NULL;
+}
+
+/*--------------------------------------------------------------------*/
+/* add_buffer_to_chain(): Add OSA_BHR to end of chain.                */
+/*--------------------------------------------------------------------*/
+void*    add_buffer_to_chain( OSA_GRP* grp, OSA_BHR* bhr )
+{
+    // Prepare OSA_BHR for adding to chain.
+    if (!bhr)                              // Any OSA_BHR been passed?
+        return NULL;
+    bhr->next = NULL;                      // Clear the pointer to next OSA_BHR
+
+    // Obtain the buffer chain lock.
+    obtain_lock( &grp->qblock );
+
+    // Add OSA_BHR to end of chain.
+    if (grp->firstbhr)                     // if there are already OSA_BHRs
+    {
+        grp->lastbhr->next = bhr;          // Add the OSA_BHR to
+        grp->lastbhr = bhr;                // the end of the chain
+        grp->numbhr++;                     // Increment number of OSA_BHRs
+    }
+    else
+    {
+        grp->firstbhr = bhr;               // Make the OSA_BHR
+        grp->lastbhr = bhr;                // the only OSA_BHR
+        grp->numbhr = 1;                   // on the chain
+    }
+
+    // Release the buffer chain lock.
+    release_lock( &grp->qblock );
+
+    return NULL;
+}
+
+/*--------------------------------------------------------------------*/
+/* remove_buffer_from_chain(): Remove OSA_BHR from start of chain.    */
+/*--------------------------------------------------------------------*/
+OSA_BHR*  remove_buffer_from_chain( OSA_GRP* grp )
+{
+    OSA_BHR*    bhr;                       // OSA_BHR
+
+    // Obtain the buffer chain lock.
+    obtain_lock( &grp->qblock );
+
+    // Point to first OSA_BHR on the chain.
+    bhr = grp->firstbhr;                   // Pointer to first OSA_BHR
+
+    // Remove the first OSA_BHR from the chain, if there is one...
+    if (bhr)                               // If there is a OSA_BHR
+    {
+        grp->firstbhr = bhr->next;         // Make the next the first OSA_BHR
+        grp->numbhr--;                     // Decrement number of OSA_BHRs
+        bhr->next = NULL;                  // Clear the pointer to next OSA_BHR
+        if (!grp->firstbhr)                // if there are no more OSA_BHRs
+        {
+//          grp->firstbhr = NULL;          // Clear
+            grp->lastbhr = NULL;           // the chain
+            grp->numbhr = 0;               // pointers and count
+        }
+    }
+
+    // Release the buffer chain lock.
+    release_lock( &grp->qblock );
+
+    return bhr;
+}
+
+/*--------------------------------------------------------------------*/
+/* remove_and_free_any_buffers_on_chain(): Remove and free OSA_BHRs.  */
+/*--------------------------------------------------------------------*/
+void*    remove_and_free_any_buffers_on_chain( OSA_GRP* grp )
+{
+    OSA_BHR*    bhr;                       // OSA_BHR
+
+    // Obtain the buffer chain lock.
+    obtain_lock( &grp->qblock );
+
+    // Remove and free the OSA_BHRs on the chain, if there are any...
+    while( grp->firstbhr != NULL )
+    {
+        bhr = grp->firstbhr;               // Pointer to first OSA_BHR
+        grp->firstbhr = bhr->next;         // Make the next the first OSA_BHR
+        free( bhr );                       // Free the message buffer
+    }
+
+    // Reset the chain pointers.
+    grp->firstbhr = NULL;                  // Clear
+    grp->lastbhr = NULL;                   // the chain
+    grp->numbhr = 0;                       // pointers and count
+
+    // Release the buffer chain lock.
+    release_lock( &grp->qblock );
+
+    return NULL;
+
 }
 
 

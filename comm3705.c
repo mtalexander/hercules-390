@@ -122,6 +122,7 @@ static PARSER ptab[]={
     {"switched","%s"},
     {"lnctl","%s"},
     {"debug","%s"},
+    {"emu3791","%s"},
     {NULL,NULL}
 };
 
@@ -136,7 +137,8 @@ enum {
     COMMADPT_KW_ENABLETO,
     COMMADPT_KW_SWITCHED,
     COMMADPT_KW_LNCTL,
-    COMMADPT_KW_DEBUG
+    COMMADPT_KW_DEBUG,
+    COMMADPT_KW_EMU3791
 } comm3705_kw;
 
 //////////////////////////////////////////////////////////////////////
@@ -1476,6 +1478,7 @@ static int commadpt_init_handler (DEVBLK *dev, int argc, char *argv[])
         dev->commadpt->sfd=-1;
         dev->commadpt->lport=0;
         dev->commadpt->debug_sna=0;
+        dev->commadpt->emu3791=0;
 
         for(i=0;i<argc;i++)
         {
@@ -1523,6 +1526,10 @@ static int commadpt_init_handler (DEVBLK *dev, int argc, char *argv[])
                         errcnt++;
                     }
                     break;
+                case COMMADPT_KW_EMU3791:
+                    if(strcasecmp(res.text,"yes")==0 || strcmp(res.text,"1"))
+                        dev->commadpt->emu3791=1;
+                    break;
                 default:
                     break;
             }
@@ -1561,7 +1568,7 @@ static int commadpt_init_handler (DEVBLK *dev, int argc, char *argv[])
         thread_name2[sizeof(thread_name2)-1]=0;
 
         rc = create_thread(&dev->commadpt->tthread,&sysblk.detattr,telnet_thread,dev->commadpt,thread_name2);
-	if(rc)
+        if(rc)
         {
             WRMSG(HHC00102, "E" ,strerror(rc));
             release_lock(&dev->commadpt->lock);
@@ -1576,7 +1583,7 @@ static int commadpt_init_handler (DEVBLK *dev, int argc, char *argv[])
         thread_name[sizeof(thread_name)-1]=0;
 
         rc = create_thread(&dev->commadpt->cthread,&sysblk.detattr,commadpt_thread,dev->commadpt,thread_name);
-	if(rc)
+        if(rc)
         {
             WRMSG(HHC00102, "E", strerror(rc));
             release_lock(&dev->commadpt->lock);
@@ -1741,7 +1748,7 @@ static void make_sna_requests2 (COMMADPT *ca) {
                 WRMSG(HHC01020, "E", SSID_TO_LCSS(ca->dev->ssid), ca->dev->devnum, "SNA request2"); 
                 return;
         }
-        respbuf = 4 + (BYTE*)eleptr;
+        respbuf = SIZEOF_INT_P + (BYTE*)eleptr;
 
         /* first do the ten-byte FID1 TH */
         respbuf[0] = 0x1C;
@@ -1815,7 +1822,7 @@ static void make_sna_requests3 (COMMADPT *ca) {
                 WRMSG(HHC01020, "E", SSID_TO_LCSS(ca->dev->ssid), ca->dev->devnum, "SNA request3"); 
                 return;
         }
-        respbuf = 4 + (BYTE*)eleptr;
+        respbuf = SIZEOF_INT_P + (BYTE*)eleptr;
 
         /* first do the ten-byte FID1 TH */
         respbuf[0] = 0x1D;
@@ -1859,7 +1866,7 @@ static void make_sna_requests4 (COMMADPT *ca, int flag, BYTE pu_type) {
                 WRMSG(HHC01020, "E", SSID_TO_LCSS(ca->dev->ssid), ca->dev->devnum, "SNA request4"); 
                 return;
         }
-        respbuf = 4 + (BYTE*)eleptr;
+        respbuf = SIZEOF_INT_P + (BYTE*)eleptr;
 
         /* first do the ten-byte FID1 TH */
         respbuf[0] = 0x1C;
@@ -1926,7 +1933,7 @@ static void make_sna_requests5 (COMMADPT *ca) {
                 WRMSG(HHC01020, "E", SSID_TO_LCSS(ca->dev->ssid), ca->dev->devnum, "SNA request5"); 
                 return;
         }
-        respbuf = 4 + (BYTE*)eleptr;
+        respbuf = SIZEOF_INT_P + (BYTE*)eleptr;
 
         /* first do the ten-byte FID1 TH */
         respbuf[0] = 0x1C;
@@ -1971,7 +1978,7 @@ void make_sna_requests (BYTE * requestp, COMMADPT *ca) {
                 WRMSG(HHC01020, "E", SSID_TO_LCSS(ca->dev->ssid), ca->dev->devnum, "SNA request"); 
                 return;
         }
-        respbuf = 4 + (BYTE*)eleptr;
+        respbuf = SIZEOF_INT_P + (BYTE*)eleptr;
 
         /* first do the ten-byte FID1 TH */
 //        respbuf[0] = requestp[0];
@@ -2052,7 +2059,7 @@ void make_sna_response (BYTE * requestp, COMMADPT *ca) {
                 WRMSG(HHC01020, "E", SSID_TO_LCSS(ca->dev->ssid), ca->dev->devnum, "SNA response");
                 return;
         }
-        respbuf = 4 + (BYTE*)eleptr;
+        respbuf = SIZEOF_INT_P + (BYTE*)eleptr;
 
         /* first do the ten-byte FID1 TH */
         respbuf[0] = requestp[0];
@@ -2160,6 +2167,64 @@ void make_sna_response (BYTE * requestp, COMMADPT *ca) {
         put_bufpool(&ca->sendq, eleptr);
 }
 
+enum fid_remap {
+	MAP_FID1_FID2,
+	MAP_FID2_FID1
+};
+
+static void th_remap(enum fid_remap r, BYTE * thptr)
+{ /* for 3791 support, remaps SNA FID1 <--> FID2 TH headers */
+int     thmpf;
+int     thm2;
+int     thdaf;
+int     thoaf;
+int     thsnf;
+int     len;
+
+    if (r == MAP_FID1_FID2)
+    {
+        thmpf = thptr[0];
+        thm2  = thptr[1];
+        thdaf = (thptr[2] << 8) + thptr[3];
+        thoaf = (thptr[4] << 8) + thptr[5];
+        thsnf = (thptr[6] << 8) + thptr[7];
+        len = (thptr[8] << 8) + thptr[9];
+        len += 10;
+        thptr[0] = (len >> 8) & 0xff;
+        thptr[1] = len & 0xff;
+        thptr[2] = 0x00;
+        thptr[3] = 0x00;
+        thptr[4] = 0x20 | (thmpf & 0x0f);
+        thptr[5] = thm2;
+        thptr[6] = thdaf & 0xff;
+        thptr[7] = thoaf & 0xff;
+        thptr[8] = (thsnf >> 8) & 0xff;
+        thptr[9] = thsnf & 0xff;
+    }
+    else
+    { /* map fid2 to fid1 */
+        len = (thptr[0] << 8) + thptr[1];
+        thmpf = thptr[4];
+        thm2  = thptr[5];
+        thdaf = thptr[6];
+        thoaf = thptr[7];
+        thsnf = (thptr[8] << 8) + thptr[9];
+        thdaf |= 0x3800;   /* subarea = 7 (maxsuba=31) */
+        thoaf |= 0x0800;   /* subarea = 1 (maxsuba=31) */
+        len -= 10;
+        thptr[0] = 0x10 | (thmpf & 0x0f);
+        thptr[1] = thm2;
+        thptr[2] = (thdaf >> 8) & 0xff;
+        thptr[3] = thdaf & 0xff;
+        thptr[4] = (thoaf >> 8) & 0xff;
+        thptr[5] = thoaf & 0xff;
+        thptr[6] = (thsnf >> 8) & 0xff;
+        thptr[7] = thsnf & 0xff;
+        thptr[8] = (len >> 8) & 0xff;
+        thptr[9] = len & 0xff;
+    }
+}
+
 /*-------------------------------------------------------------------*/
 /* Execute a Channel Command Word                                    */
 /*-------------------------------------------------------------------*/
@@ -2171,6 +2236,7 @@ U32 num;                        /* Work : Actual CCW transfer count             
 BYTE    *piudata;
 int     piusize;
 void    *eleptr;
+int     llsize;
     
     UNREFERENCED(flags);
     UNREFERENCED(chained);
@@ -2213,11 +2279,17 @@ void    *eleptr;
                 eleptr = get_bufpool(&dev->commadpt->sendq);
                 *residual=count;
                 if (eleptr) {
-                    piudata = 4 + (BYTE*)eleptr;
+                    piudata = SIZEOF_INT_P + (BYTE*)eleptr;
                     piusize = (piudata[8] << 8) + piudata[9];
                     piusize += 10;    // for FID1 TH
                     iobuf[0] = BUFPD;
                     memcpy (&iobuf[BUFPD], piudata, piusize);
+                    if (dev->commadpt->emu3791) {
+                        llsize = piusize + BUFPD;
+                        iobuf[0] = (llsize >> 8) & 0xff;
+                        iobuf[1] = llsize & 0xff;
+                        th_remap(MAP_FID1_FID2, &iobuf[BUFPD]);
+                    }
                     *residual=count - (piusize + BUFPD);
                     logdump("READ", dev, &iobuf[BUFPD], piusize);
                     if (dev->commadpt->debug_sna)
@@ -2234,6 +2306,15 @@ void    *eleptr;
                 break;
 
         /*---------------------------------------------------------------*/
+        /* 3791 WRITE BLOCK                                              */
+        /*---------------------------------------------------------------*/
+        case 0x05:
+                logdump("WRITE BLOCK", dev, iobuf, count);
+                *residual=0;
+                *unitstat=CSW_CE|CSW_DE;
+                break;
+
+        /*---------------------------------------------------------------*/
         /* WRITE type CCWs                                               */
         /*---------------------------------------------------------------*/
         case 0x09:   /* WRITE BREAK */
@@ -2241,6 +2322,8 @@ void    *eleptr;
                 dev->commadpt->write_ccw_count++;
                 dev->commadpt->unack_attn_count = 0;
                 logdump("WRITE", dev, iobuf, count);
+                if (dev->commadpt->emu3791 && (iobuf[4] & 0xf0) == 0x20)
+                    th_remap(MAP_FID2_FID1, iobuf);
                 if ((iobuf[0] & 0xf0) == 0x10) {  // if FID1
                     if (dev->commadpt->debug_sna)
                         format_sna(iobuf, "WR", dev->ssid, dev->devnum);

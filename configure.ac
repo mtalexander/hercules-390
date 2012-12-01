@@ -11,7 +11,7 @@
 AC_INIT(hercules.h)                     # (package, version, bugreport email, etc)
 AC_REVISION($Revision$)                 # (the version of this configure.ac)
 AC_CONFIG_AUX_DIR(autoconf)             # (directory containing auxillary build tools)
-AM_INIT_AUTOMAKE(hercules,3.08)         # (the version of our software package)
+AM_INIT_AUTOMAKE(hercules,4.00)         # (the version of our software package)
 AM_CONFIG_HEADER(config.h)              # (the file the resulting configure script will produce)
 AM_MAINTAINER_MODE()
 AC_CANONICAL_HOST()                     # (sets $host_cpu, $host_vendor, and $host_os)
@@ -191,12 +191,12 @@ fi
 # -----------------------------------------------------------------------------
 #  PROGRAMMING NOTE: The below 'AC_SUBST' macro causes AC_OUTPUT to replace
 #  all instances of "@xxxxxx@" in input files with the value that the shell
-#  variable "xxxxxx" has when AC_OUTPUT is called. Thus, the variable name
-#  used ("modexecdir" in our case) *is* significant and cannot be changed
-#  unless you change the "@modexecdir@" strings in all of the input files.
+#  variable "xxxxxx" has when AC_OUTPUT is called. However, we setup a define
+#  for source files (MODULESDIR) and a variable for make ($(modexecdir)).  Any
+#  other usage should be avoided.
 # -----------------------------------------------------------------------------
 
-modexecdir=${libdir}/${PACKAGE}
+modexecdir='$(libdir)/$(PACKAGE)'
 AC_SUBST(modexecdir)
 
 
@@ -351,7 +351,14 @@ AC_SUBST([LIBTOOL_DEPS])                # (see PROGRAMMING NOTE above)
 # (See comments in the 'AC_CHECK_LIB' Libraries section further below)
 # -----------------------------------------------------------------------------
 AC_MSG_NOTICE( [(use of lt_dlopen forced by Hercules Dynamic Loader requirement)] )
-hc_cv_have_lt_dlopen=yes
+
+AS_IF([test "x${with_included_ltdl}" = "xno"],
+    [hc_cv_have_lt_dlopen=no],
+    [hc_cv_have_lt_dlopen=yes])
+
+AS_IF([test "x${ac_cv_func_dlopen}" = "xyes" -o "x${ac_cv_lib_dl_dlopen}" = "xyes"],
+    [hc_cv_have_dlopen=yes],
+    [hc_cv_have_dlopen=no])
 
 AM_GNU_GETTEXT([external])              # GNU internationalization and localization
 AM_ICONV()                              # GNU internationalization and localization
@@ -377,51 +384,36 @@ hc_error=no
 
 AH_TEMPLATE( [CUSTOM_BUILD_STRING],     [Define to provide additional information about this build] )
 AH_TEMPLATE( [MAX_CPU_ENGINES],         [Defines the maximum number of emulated CPU engines] )
-AH_TEMPLATE( [PKGDATADIR],              [Directory where the HTTP server will find documents] )
-AH_TEMPLATE( [HERC_LOCALEDIR],          [Directory where to find NLS data] )
-AH_TEMPLATE( [MODULESDIR],              [Directory where HERCULES modules are installed] )
 AH_TEMPLATE( [DEBUG],                   [Define to enable extra debugging code (TRACE/VERIFY/ASSERT macros)] )
-
 AH_TEMPLATE( [C99_FLEXIBLE_ARRAYS],     [Define if your gcc properly supports C99 flexible arrays] )
-
 AH_TEMPLATE( [HAVE_ATTR_REGPARM],       [Define if your gcc properly supports __attribute__((regparm(n)))] )
 AH_TEMPLATE( [NO_ASM_BYTESWAP],         [Define to disable assembler routines for byte swapping] )
 AH_TEMPLATE( [NO_IEEE_SUPPORT],         [Define to disable IEEE floating point support] )
 AH_TEMPLATE( [NO_SETUID],               [Define to disable setuid operation] )
 AH_TEMPLATE( [NO_SIGABEND_HANDLER],     [Define to disable sigabend_handler (please describe this better)] )
 AH_TEMPLATE( [NON_UNIQUE_GETTIMEOFDAY], [Define if 'gettimeofday' returns non-unique values] )
-
 AH_TEMPLATE( [NEED_GETOPT_WRAPPER],     [Define to indicate a wrapper for getopt is needed] )
 AH_TEMPLATE( [NEED_GETOPT_OPTRESET],    [Define to indicate optreset exists] )
-
 AH_TEMPLATE( [HAVE_INTTYPES_H],         [Define if inttypes.h header file is present on your system] )
 AH_TEMPLATE( [HAVE_U_INT],              [Define if your system uses u_int8_t, etc, instead of uint8_t] )
-
 AH_TEMPLATE( [OPTION_ENHANCED_CONFIG_INCLUDE], [Define to enable enhanced-mode 'include' file support in configuration file] )
 AH_TEMPLATE( [OPTION_HAO],              [Define to enable Hercules Automatic Operator feature] )
 AH_TEMPLATE( [OPTION_DYNAMIC_LOAD],     [Define to enable Hercules Dynamic Loader feature] )
 AH_TEMPLATE( [HDL_BUILD_SHARED],        [Define to indicate shared libraries are being used] )
 AH_TEMPLATE( [HDL_USE_LIBTOOL],         [Define to cause dynamic loader to use libtool instead of dlopen] )
-
 AH_TEMPLATE( [BUILD_HERCIFC],           [Define if hercifc program is to be built] )
-
 AH_TEMPLATE( [WIN32],                   [Define when building under Win32 (MinGW or Cygwin)] )
 AH_TEMPLATE( [EXTERNALGUI],             [Define to build interface to external Windows GUI] )
 AH_TEMPLATE( [OPTION_FTHREADS],         [Define to use included threads implementation (fthreads)] )
-
 AH_TEMPLATE( [TIMESPEC_IN_TIME_H],      [Define if 'struct timespec' defined in <time.h>] )
 AH_TEMPLATE( [TIMESPEC_IN_SYS_TYPES_H], [Define if 'struct timespec' defined in <sys/types.h>] )
-
 AH_TEMPLATE( [_BSD_SOCKLEN_T_],         [Define missing macro on apple darwin (osx) platform] )
 AH_TEMPLATE( [_INTL_REDIRECT_MACROS],   [Define to 1 if non-Intel architecture (gettext)] )
-
 AH_TEMPLATE( [CCKD_BZIP2],              [Define to enable bzip2 compression in emulated DASDs] )
 AH_TEMPLATE( [HET_BZIP2],               [Define to enable bzip2 compression in emulated tapes] )
 AH_TEMPLATE( [OPTION_CAPABILITIES],     [Define to enable posix draft 1003.1e capabilities] )
-
 AH_TEMPLATE( [ENABLE_OBJECT_REXX],      [Define to enable open object rexx support] )
 AH_TEMPLATE( [ENABLE_REGINA_REXX],      [Define to enable Regina Rexx support] )
-
 AH_TEMPLATE( [ENABLE_IPV6],             [Define to enable IPV6 support] )
 
 ###############################################################################
@@ -1523,7 +1515,7 @@ AC_ARG_ENABLE( external-gui,
 
     AC_HELP_STRING( [--disable-external-gui],
 
-        [disable external Windows GUI interface]
+        [disable external GUI interface]
     ),
     [
         case "${enableval}" in
@@ -1534,7 +1526,7 @@ AC_ARG_ENABLE( external-gui,
              ;;
         esac
     ],
-    [hc_cv_opt_external_gui=$hc_cv_is_windows]
+    [hc_cv_opt_external_gui=yes]
 )
 
 AC_ARG_ENABLE( fthreads,
@@ -1672,6 +1664,7 @@ AC_CACHE_SAVE()
 ###############################################################################
 #   Final default settings, final sanity / error checks...
 ###############################################################################
+
 if test "$hc_cv_ena_object_rexx" = "yes" ; then
 
    if test "$hc_cv_have_rexx_h" != "yes"; then
@@ -1984,40 +1977,6 @@ AC_CACHE_SAVE()
 #   DONE! -- Define our OUTPUT values and then exit...
 ###############################################################################
 
-#  This is ugly...  Someone PLEASE fix this (if possible)...
-#
-#  The object is to get the value of PKGDATADIR into config.h,
-#  but this is the only way I've found to do so. All of this
-#  rigamarole is needed because ${datadir} doesn't expand to the
-#  desired data directory. If there's a better way to get there,
-#  PLEASE replace this. -- JRM
-#
-#  If DESTPREFIX is set, we're doing an RPM build, and we want to
-#  use that value. If it's not set, and prefix is set and not equal
-#  to NONE, then we'll use that. If prefix is NONE, then default to
-#  /usr/local. Note: This prefix has /share/locale, /share/$PACKAGE,
-#  or /lib/$PACKAGE appended in the next step, so it must NOT have
-#  those components included in $DESTPREFIX itself.
-
-if test "x${DESTPREFIX}" = "x"; then
-    if test "x$prefix" = "xNONE"; then
-        DESTPREFIX="/usr/local"
-        DESTEPREFIX="/usr/local"
-    else
-        DESTPREFIX="${prefix}"
-        DESTEPREFIX="${exec_prefix}"
-    fi
-fi
-
-case "x${libdir}" in
-    *lib64*) DESTLIBS="lib64" ;;
-    *)       DESTLIBS="lib" ;;
-esac
-
-MODULESDIR="${DESTEPREFIX}/${DESTLIBS}/${PACKAGE}"
-PKGDATADIR="${DESTPREFIX}/share/${PACKAGE}"
-HERC_LOCALEDIR="${DESTPREFIX}/share/locale"
-
 #--------------------------------------------------------------#
 # (place only AC_DEFINE_UNQUOTED here; place AC_DEFINE below)  #
 #--------------------------------------------------------------#
@@ -2026,9 +1985,6 @@ if test "x$hc_cv_opt_custom_build_str" != "x"; then
     AC_DEFINE_UNQUOTED( [CUSTOM_BUILD_STRING], "${hc_cv_opt_custom_build_str}" )
 fi
 
-AC_DEFINE_UNQUOTED( [MODULESDIR],        "${MODULESDIR}"                )
-AC_DEFINE_UNQUOTED( [PKGDATADIR],        "${PKGDATADIR}"                )
-AC_DEFINE_UNQUOTED( [HERC_LOCALEDIR],    "${HERC_LOCALEDIR}"            )
 AC_DEFINE_UNQUOTED( [MAX_CPU_ENGINES],    ${hc_cv_opt_num_cpu_engines}  )
 
 AC_CACHE_SAVE()
@@ -2036,10 +1992,12 @@ AC_CACHE_SAVE()
 AC_MSG_NOTICE( [                                         ] )
 AC_MSG_NOTICE( [ Package destination directory prefixes: ] )
 AC_MSG_NOTICE( [                                         ] )
-AC_MSG_NOTICE( [    Libraries:  ${MODULESDIR}            ] )
-AC_MSG_NOTICE( [    Data:       ${PKGDATADIR}            ] )
-AC_MSG_NOTICE( [    Locale:     ${HERC_LOCALEDIR}        ] )
+AC_MSG_NOTICE( [    Libraries:  ${modexecdir}            ] )
+AC_MSG_NOTICE( [    Data:       \$(datadir)/hercules     ] )
+AC_MSG_NOTICE( [    Locale:     ${localedir}             ] )
 AC_MSG_NOTICE( [                                         ] )
+
+CPPFLAGS="$CPPFLAGS"' -DPKGDATADIR=\"$(pkgdatadir)\" -DMODULESDIR=\"$(modexecdir)\" -DHERC_LOCALEDIR=\"$(localedir)\"'
 
 #---------------------------------------------------------------#
 #  (place only AC_DEFINE here; place AC_DEFINE_UNQUOTED above)  #
@@ -2065,10 +2023,8 @@ test "$hc_cv_asm_byteswap"               != "yes"  &&  AC_DEFINE(NO_ASM_BYTESWAP
 test "$hc_cv_non_unique_gettimeofday"     = "yes"  &&  AC_DEFINE(NON_UNIQUE_GETTIMEOFDAY)
 test "$hc_cv_build_hercifc"               = "yes"  &&  AC_DEFINE(BUILD_HERCIFC)
 test "$hc_cv_opt_capabilities"            = "yes"  &&  AC_DEFINE(OPTION_CAPABILITIES)
-
 test "$hc_cv_ena_object_rexx"             = "yes"  &&  AC_DEFINE(ENABLE_OBJECT_REXX)
 test "$hc_cv_ena_regina_rexx"             = "yes"  &&  AC_DEFINE(ENABLE_REGINA_REXX)
-
 test "$hc_cv_ena_ipv6"                    = "yes"  &&  AC_DEFINE(ENABLE_IPV6)
 
 if test $hc_cv_have_sa_sigaction != yes ||
