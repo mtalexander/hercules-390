@@ -13,7 +13,7 @@ This page describes how to set up TCP/IP connectivity between
 a Hercules machine and the outside world.
 <p>
 Since Hercules runs as a user process under the control of a driving
-system (usually Linux/x86 or Windows), it does not have direct
+system (usually Linux/x86, OSX, or Windows), it does not have direct
 access to the driving system's network adapter.  This presents a
 problem in establishing connectivity between the network and the
 TCP/IP stack of an operating system running under Hercules.
@@ -39,7 +39,7 @@ as shown in the following diagram:
         |    CTCA     |         |        |
         |192.168.200.1|         |        |
         +------|------+   192.168.200.2  |
-        |  /dev/tun           tun0       |
+        |/dev/net/tun         tun0       |
         |      |                |        |
         |      +----------------+        |
         |       Virtual CTC link         |
@@ -58,38 +58,13 @@ running under Hercules.  Each end of the link has its own IP
 address which is distinct from the IP address of the driving
 system's real network adapter.
 <p>
-The Universal TUN/TAP driver is currently only available for Linux,
-Solaris, and FreeBSD. &nbsp; However, similar functionality may be
+The Universal TUN/TAP driver is currently only available for Linux, OSX,
+and FreeBSD. &nbsp; However, similar functionality may be
 obtained on Windows 98/Me/2000/XP systems (but not Windows NT) via the
 <a href="http://www.softdevlabs.com/Hercules/ctci-w32-index.html">
 CTCI-W32</a> protocol.
 <p>TCP/IP configuration is slightly different depending on which
 subnet the CTC is in.
-
-<h2>Installing the TUN/TAP Driver (Linux 2.2)</h2>
-<p>
-The Linux 2.2 kernel does not include the TUN/TAP driver, so you
-need to install it using the following procedure:
-<ol>
-<li>Download the file tun-1.0-1.i386.rpm from
-<a href="http://vtun.sourceforge.net/tun">http://vtun.sourceforge.net/tun</a>
-<li>Install the driver using the following commands:
-    <code>
-    <br>su </code>(enter the root password when prompted)<code>
-    <br>rpm -ivh tun-1.0-1.i386.rpm
-    <br>chgrp <em>xxxxx</em> /dev/tun*
-        </code>(where <em>xxxxx</em> is the group under which
-                you run Hercules)<code>
-    <br>chmod g+w /dev/tun*
-    <br>chmod o-r /dev/tun*
-    </code>
-<li>Edit the file <b><i>/etc/modules.conf</i></b> (it is called
-    <b><i>/etc/conf.modules</i></b> in some distributions)
-    and add the following line:
-    <br><code>alias char-major-90 tun</code>
-    <br>This causes the TUN/TAP driver to be loaded automatically
-    when a /dev/tun* device is opened by Hercules.
-</ol>
 
 <h2>Installing the TUN/TAP Driver (Linux 2.4)</h2>
 <p>
@@ -124,24 +99,61 @@ The procedure for completing the TUN/TAP setup for Linux 2.4 is shown below.
     when the /dev/net/tun device is opened by Hercules.
 </ol>
 
-<h2>Installing the TUN/TAP Driver (Linux 2.6)</h2>
+<h2>Installing the TUN/TAP Driver</h2>
 <p>
 For distributions based on the Linux 2.6 kernel you will probably find that the
 TUN/TAP driver is already installed and the /dev/net/tun device is already
 defined. If not, then follow the procedure for Linux 2.4 as descibed above.
 <p>
-You will certainly need to alter the permissions on the /dev/net/tun device
+For FreeBSD, refer to <code>man tun</code>.
+You will likey want to enable
+<code>net.link.tun.devfs_cloning</code> to create
+<code>/dev/tun</code>, but you will be in uncharted waters.
+<p>
+If you are using a current distribution
+you will need to alter the permissions on the /dev/net/tun device
 to allow Hercules to open it.
-<ul>
-<li>Use the following commands to set the necessary permissions:
+Issue <code>ls -l /dev/net/tun</code> (Linux)
+<code>ls -l /dev/tun0</code> (OSX) to determine whether Hercules can
+open the device.
+<pre>
+[root@servus ~]# ls -l /dev/net/tun
+crw-rw---- 1 root staff 10, 200 Nov 24 15:01 /dev/net/tun
+
+[enrico@enrico-mbp ref.obj]$ls -l /dev/tap0
+crw-rw-rw-  1 root  wheel   21,   0 Nov 22 18:31 /dev/tap0
+
+[enrico@enrico-mbp ref.obj]$ls -l /dev/tun0
+crw-rw-rw-  1 root  wheel   19,   0 Nov 22 18:31 /dev/tun0
+</pre>
+<p>You have two ways to make the <code>tun</code> device usable.
+Use the second only with nonstandard and/or old kernels
+(that is, if the first udev rule does not work for you.)
+<ol>
+<li>
+The preferred way to change properties for the Linux <code>tun</code>
+device is via a udev rule in
+<code>/etc/udev/rules.d</code>
+<pre>
+[root@servus rules.d]# cat 99-jph.rules
+KERNEL=="tun",                  GROUP="staff", MODE="0660"
+</pre>
+<li>Alternatively, use the following commands to set the necessary permissions
+(the sledgehammer approach):
     <code>
-    <br>su </code>(enter the root password when prompted)<code>
-    <br>chown root:<em>xxxxx</em> /dev/net/tun
+    <p>su </code>(enter the root password when prompted)<code>
+    <br>chgrp <em>xxxxx</em> /dev/net/tun
         </code>(where <em>xxxxx</em> is the group under which
                 you run Hercules)<code>
     <br>chmod 0660 /dev/net/tun
     </code>
-<li><i>Additional notes from Greg Smith:</i>
+    <p>or make the device file writable by world; this does not consist an
+    integrity exposure, as the world at large cannot do anything with the
+    file descriptor it gets.
+    <code>
+    <p>chmod 0666 /dev/net/tun
+    </code>
+<p><i>Additional notes from Greg Smith:</i>
     <ol>
     <li>I find on my Fedora Core 6 system that I have to add the above 2 commands
         to <b><i>/etc/rc.local</i></b>
@@ -153,15 +165,16 @@ to allow Hercules to open it.
         of error messages about SIOCDIFADDR and SIOCSIFHWADDR ioctl's failing
         but these can be ignored (maybe I'll fix that soon).
     </ol>
-</ul>
+</ol>
 <p>
 In Linux 2.6 the file <b><i>/etc/modules.conf</i></b> no longer exists,
 instead there is a file called <b><i>/etc/modprobe.conf</i></b>.
 TUN/TAP will usually work, however, without any change to the modprobe
 configuration.
 
-<h2><a name="hercifc">Configuring the TUN interface</a></h2>
-<p>You may be able to configure the tunnel device at system boot;
+<h2><a name="hercifc">Configuring a TUN interface</a></h2>
+<p>You may be able to configure the tunnel interfaces you will need
+at system boot;
 but if you cannot or will not, Hercules supplies a utility
 (<code>hercifc</code>) to do this.
 <h3>At Linux boot</h3>
@@ -174,7 +187,7 @@ http://openvpn.net/index.php/open-source/documentation/howto.html</a>.
 Note, however, that <code>openvpn</code> is just one way to create a permanent tunnel device;
 if you have another favourite, go ahead and use it.
 <p>
-To create permanent a tunnel device, add this to rc.local
+To create permanent a tunnel interface, add this to rc.local
 (or as appropriate for
 the distribution you are using):
 <pre>
@@ -185,23 +198,40 @@ the distribution you are using):
 <p>This example assumes that Hercules is in the group
 <code>hercules</code>; it shows the tunnel device in a separate network,
 which requires routing as described below.
+<code>ifconfig</code> can display the permanent interface:
+<pre>
+[root@servus ~]# ifconfig tun0
+tun0      Link encap:UNSPEC  HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+          inet addr:192.168.2.65  P-t-P:10.0.0.33  Mask:255.255.255.255
+          UP POINTOPOINT RUNNING NOARP MULTICAST  MTU:1500  Metric:1
+          RX packets:71282 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:50 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:100
+          RX bytes:4289708 (4.0 MiB)  TX bytes:2764 (2.6 KiB)
+</pre>
 <p>
-If the device is in the same subnet as the Hercules host,
+If the interface is in the same subnet as the Hercules host,
 you need to enable proxy arp.
 One way to achieve this is to turn it on dynamically:
 <pre>
     echo 1 >/proc/sys/net/ipv4/conf/eth0/proxy_arp
 </pre>
+<h3>Free BSD</h3>
+<p>
+On FreeBSD, use the command <code>ifconfig tun<n> create</code> to create
+an interface.
 <h3>Using hercifc</h3>
 <p>
 The tun0 network interface in the driving system must be configured
-as a point-to-point link.  The design of the TUN/TAP driver does not
+as a point-to-point link.  The original design of the TUN/TAP driver does not
 allow the interface to be statically configured like a regular network
 interface &#151; the tun0 interface does not exist until a program
 opens the TUN device.  For this reason, Hercules provides a special
 program called hercifc to configure the tun0 network interface.  This
 program is launched automatically by Hercules 3088 CTC device
 initialization.
+(Later, the ability to make an interface permanent was added;
+this is why <code>openvpn</code> and preconfigured interfaces work.)
 <p>
 To allow the hercifc program to issue the necessary configuration
 commands, you must ensure that hercifc is installed with setuid root
@@ -214,13 +244,22 @@ can be executed only by the group which is authorized to run Hercules.</i>
 The following commands alter the file permissions to ensure that only
 users in a trusted group can execute hercifc:
     <code>
-    <br>su </code>(enter the root password when prompted)<code>
+    <p>su </code>(enter the root password when prompted)<code>
     <br>chgrp <em>xxxxx</em> /usr/local/bin/hercifc
         </code>(where <em>xxxxx</em> is the group under which
                 you run Hercules)<code>
     <br>chmod 4750 /usr/local/bin/hercifc
     <br>exit
     </code>
+<p>That said, if you are installing Hercules on anything like
+a production environment (more likely requesting the installation
+of Hercules),
+your systems programmer will flatly
+refuse this hack if he is worth his salt.
+As refusal often offends, we suggest that
+you refrain from asking for the use of
+<code>hercifc</code> (it might also be good
+for your <i>street cred</i>).
 
 <h2>Enabling IP forwarding</h2>
 <p>
@@ -233,14 +272,14 @@ to enable IP forwarding or routing:
 <li>For SuSE, specify <code>IP_FORWARD="yes"</code> in
     the <i><b>/etc/rc.config</b></i> file.
 <li>If you cannot find this option in your distribution, the following
-    command should work on any Linux 2.x kernel:
+    command should work on any Linux 2.x and later kernel:
     <br><code>echo "1" > /proc/sys/net/ipv4/ip_forward</code>
 </ul>
 
 <h2>Defining a route to Hercules TCP/IP</h2>
 <p>
-Client systems which connect to TCP/IP applications running in
-the Hercules machine need to have a routing entry which defines
+Client systems that connect to TCP/IP applications running in
+the Hercules machine need to have a routing entry to define
 the driving system as the gateway into the Hercules system.  An
 example route definition for a Unix client system is shown below:
 <code><pre>
@@ -261,8 +300,12 @@ is to add an appropriate routing entry to your default gateway router.
 <h2>Defining the link in Hercules</h2>
 <p>
 You must define a CTC device pair in the Hercules configuration
-file. The second device must bear the same definition as the 1st
-instance and be at device number + 1. The 1st device number must be even.
+file:
+The first device number must be even.
+The second device must bear the same definition as the first
+instance and be at device number + 1
+(for CTCI, the first definition beyond the device type is ignored;
+you only need to specify the definition with the second device).
 Devices should preferably be grouped (furthermore, it makes the
 configuration file easier to read).
 <p>
@@ -275,6 +318,7 @@ For a preconfigured tunnel:
 <br>or
 <br>0E20-0E21 CTCI tun0
 </code>
+<p>
 <p>Using hercifc:
 <p>
 <code>
@@ -284,6 +328,7 @@ For a preconfigured tunnel:
 <br>or
 <br>0E20-0E21 CTCI 192.168.200.1 192.168.200.2
 </code>
+<p>
 <p>Check <A HREF="hercconf.html#device_definitions">Device Definition Statement syntax </A> for an explanation of device grouping.
 <p>
 Two IP addresses must be assigned, one for the driving system's

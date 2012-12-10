@@ -9,6 +9,44 @@
 /*   (http://www.hercules-390.org/herclic.html) as modifications to  */
 /*   Hercules.                                                       */
 
+/*********************************************************************/
+/* Please keep to this terminology:                                  */
+/*                                                                   */
+/* *  A  character  special device file is a file system object, for */
+/*    example  /dev/net/tun.  It can be opened if permissions allow. */
+/*    The ls command shows such objects:                             */
+/*    crw-rw---- 1 root staff 10, 200 Nov 24 15:01 /dev/net/tun      */
+/*    Permissions are set when the special device file is created by */
+/*    mknod  or  by  a udev rule invoked as a result of creating the */
+/*    object.                                                        */
+/*                                                                   */
+/* *  A network interface represents an IP adapter, real or virtual. */
+/*    Interfaces  are  displayed  and  controlled  by  the  ifconfig */
+/*    command (to be replaced by the ip command).                    */
+#if 0
+        tun0      Link encap:UNSPEC  HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+                  inet addr:192.168.2.65  P-t-P:10.0.0.33  Mask:255.255.255.255
+                  UP POINTOPOINT RUNNING NOARP MULTICAST  MTU:1500  Metric:1
+                  RX packets:70834 errors:0 dropped:0 overruns:0 frame:0
+                  TX packets:47 errors:0 dropped:0 overruns:0 carrier:0
+                  collisions:0 txqueuelen:100
+                  RX bytes:4262823 (4.0 MiB)  TX bytes:2602 (2.5 KiB)
+#endif
+/*                                                                   */
+/* Opening the character special file obtains a file handle that can */
+/* be  associated  with  an  interface.   No special permissions are */
+/* required  to  open  the  character special file, as you cannot do */
+/* anything  with the file descriptor until you associate it with an */
+/* interface.   The  operation  of  associating a newly created file */
+/* descriptor  with  interface  requires  root privileges unless the */
+/* interface  was  created  by, e.g., openvpn which can set the user */
+/* and  group  that  my  associate  the interface.  So this is where */
+/* hercifc comes into play.                                          */
+/*                                                                   */
+/* A preconfigured interface is assumed when only the interface name */
+/* is specified.                                                     */
+/*********************************************************************/
+
 #include "hstdinc.h"
 
 /* jbs 10/27/2007 added _SOLARIS_   silly typo fixed 01/18/08 when looked at this again */
@@ -110,7 +148,8 @@ DEVHND ctci_device_hndinfo =
 
 int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
 {
-    PCTCBLK         pWrkCTCBLK = NULL;  // Working CTCBLK
+    CTCBLK          wblk;
+    PCTCBLK         pWrkCTCBLK = &wblk; // Working CTCBLK
     PCTCBLK         pDevCTCBLK = NULL;  // Device  CTCBLK
     int             rc = 0;             // Return code
     int             nIFFlags;           // Interface flags
@@ -139,26 +178,11 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
         return 0;
 
     // Housekeeping
-    pWrkCTCBLK = malloc( sizeof( CTCBLK ) );
-
-    if( !pWrkCTCBLK )
-    {
-        char buf[40];
-        MSGBUF(buf,"malloc(%d)", (int)sizeof(CTCBLK));
-        // "%1d:%04X CTC: error in function '%s': '%s'"
-        WRMSG(HHC00900, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, buf, strerror(errno) );
-        return -1;
-    }
-
     memset( pWrkCTCBLK, 0, sizeof( CTCBLK ) );
 
     // Parse configuration file statement
     if( ParseArgs( pDEVBLK, pWrkCTCBLK, argc, (char**)argv ) != 0 )
-    {
-        free( pWrkCTCBLK );
-        pWrkCTCBLK = NULL;
         return -1;
-    }
 
     // Allocate the device CTCBLK and copy parsed information.
 
@@ -170,8 +194,6 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
         MSGBUF(buf, "malloc(%d)", (int)sizeof(CTCBLK));
         // "%1d:%04X CTC: error in function '%s': '%s'"
         WRMSG(HHC00900, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, buf, strerror(errno) );
-        free( pWrkCTCBLK );
-        pWrkCTCBLK = NULL;
         return -1;
     }
 
@@ -205,32 +227,37 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
     // Give both Herc devices a reasonable name...
 
     strlcpy( pDevCTCBLK->pDEVBLK[0]->filename,
-             pDevCTCBLK->szTUNCharName,
+             pDevCTCBLK->szTUNCharDevName,
      sizeof( pDevCTCBLK->pDEVBLK[0]->filename ) );
 
     strlcpy( pDevCTCBLK->pDEVBLK[1]->filename,
-             pDevCTCBLK->szTUNCharName,
+             pDevCTCBLK->szTUNCharDevName,
      sizeof( pDevCTCBLK->pDEVBLK[1]->filename ) );
 
-    rc = TUNTAP_CreateInterface( pDevCTCBLK->szTUNCharName,
+    /* It  might  be  tempting  to  add IFF_TUN_EXCL to the flags to */
+    /* avoid  a  race,  but it does not work like open exclusive; it */
+    /* would appear that the bit is permanent so that hercifc cannot */
+    /* configure the interface.                                      */
+    rc = TUNTAP_CreateInterface( pDevCTCBLK->szTUNCharDevName,
+                                 (pDevCTCBLK->fPreconfigured ? IFF_NO_HERCIFC : 0) |
                                  IFF_TUN | IFF_NO_PI,
                                  &pDevCTCBLK->fd,
-                                 pDevCTCBLK->szTUNDevName );
+                                 pDevCTCBLK->szTUNIfName );
 
-    if( rc < 0 )
-    {
-        free( pWrkCTCBLK );
-        pWrkCTCBLK = NULL;
-        return -1;
-    }
-    else
-    {
-        // "%1d:%04X CTC: device '%s', type '%s' opened"
-        WRMSG(HHC00901, "I", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
-                  pDevCTCBLK->szTUNDevName, "TUN");
-    }
+    if( rc < 0 ) return -1;
 
-    if (!pDevCTCBLK->fPreconfigured)
+    // "%1d:%04X CTC: device '%s', type '%s' opened"
+    WRMSG(HHC00901, "I", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
+              pDevCTCBLK->szTUNIfName, "TUN");
+
+    if (pDevCTCBLK->fPreconfigured)
+    {
+#if !defined( OPTION_W32_CTCI ) && 0
+        /* Trying  to determine whether the device is persistent did */
+        /* not pan out as the query returns only the IFF flags.      */
+#endif
+    }
+    else                              /* Needs configuring           */
     {
 
 #if defined(OPTION_W32_CTCI)
@@ -240,14 +267,14 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
             struct tt32ctl tt32ctl;
 
             memset( &tt32ctl, 0, sizeof(tt32ctl) );
-            strlcpy( tt32ctl.tt32ctl_name, pDevCTCBLK->szTUNDevName, sizeof(tt32ctl.tt32ctl_name) );
+            strlcpy( tt32ctl.tt32ctl_name, pDevCTCBLK->szTUNIfName, sizeof(tt32ctl.tt32ctl_name) );
 
             tt32ctl.tt32ctl_devbuffsize = pDevCTCBLK->iKernBuff;
             if( TUNTAP_IOCtl( pDevCTCBLK->fd, TT32SDEVBUFF, (char*)&tt32ctl ) != 0  )
             {
                 // "%1d:%04X CTC: ioctl '%s' failed for device '%s': '%s'"
                 WRMSG(HHC00902, "W", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
-                      "TT32SDEVBUFF", pDevCTCBLK->szTUNDevName, strerror( errno ) );
+                      "TT32SDEVBUFF", pDevCTCBLK->szTUNIfName, strerror( errno ) );
             }
 
             tt32ctl.tt32ctl_iobuffsize = pDevCTCBLK->iIOBuff;
@@ -255,13 +282,13 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
             {
                 // "%1d:%04X CTC: ioctl '%s' failed for device '%s': '%s'"
                 WRMSG(HHC00902, "W", SSID_TO_LCSS(pDevCTCBLK->pDEVBLK[0]->ssid), pDevCTCBLK->pDEVBLK[0]->devnum,
-                      "TT32SIOBUFF", pDevCTCBLK->szTUNDevName, strerror( errno ) );
+                      "TT32SIOBUFF", pDevCTCBLK->szTUNIfName, strerror( errno ) );
             }
         }
 #endif
 
 #ifdef OPTION_TUNTAP_CLRIPADDR
-        VERIFY( TUNTAP_ClrIPAddr ( pDevCTCBLK->szTUNDevName ) == 0 );
+        VERIFY( TUNTAP_ClrIPAddr ( pDevCTCBLK->szTUNIfName ) == 0 );
 #endif
 
 #ifdef OPTION_TUNTAP_SETMACADDR
@@ -291,25 +318,25 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
             "** CTCI_Init: %4.4X (%s): IP \"%s\"  -->  default MAC \"%s\"\n"
 
             ,pDevCTCBLK->pDEVBLK[0]->devnum
-            ,pDevCTCBLK->szTUNDevName
+            ,pDevCTCBLK->szTUNIfName
             ,pDevCTCBLK->szGuestIPAddr
             ,pDevCTCBLK->szMACAddress
         );
 
-        VERIFY( TUNTAP_SetMACAddr ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szMACAddress  ) == 0 );
+        VERIFY( TUNTAP_SetMACAddr ( pDevCTCBLK->szTUNIfName, pDevCTCBLK->szMACAddress  ) == 0 );
 #endif
 
-        VERIFY( TUNTAP_SetIPAddr  ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szDriveIPAddr ) == 0 );
+        VERIFY( TUNTAP_SetIPAddr  ( pDevCTCBLK->szTUNIfName, pDevCTCBLK->szDriveIPAddr ) == 0 );
 
-        VERIFY( TUNTAP_SetDestAddr( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szGuestIPAddr ) == 0 );
+        VERIFY( TUNTAP_SetDestAddr( pDevCTCBLK->szTUNIfName, pDevCTCBLK->szGuestIPAddr ) == 0 );
 
 #ifdef OPTION_TUNTAP_SETNETMASK
-        VERIFY( TUNTAP_SetNetMask ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szNetMask     ) == 0 );
+        VERIFY( TUNTAP_SetNetMask ( pDevCTCBLK->szTUNIfName, pDevCTCBLK->szNetMask     ) == 0 );
 #endif
 
-        VERIFY( TUNTAP_SetMTU     ( pDevCTCBLK->szTUNDevName, pDevCTCBLK->szMTU         ) == 0 );
+        VERIFY( TUNTAP_SetMTU     ( pDevCTCBLK->szTUNIfName, pDevCTCBLK->szMTU         ) == 0 );
 
-        VERIFY( TUNTAP_SetFlags   ( pDevCTCBLK->szTUNDevName, nIFFlags                  ) == 0 );
+        VERIFY( TUNTAP_SetFlags   ( pDevCTCBLK->szTUNIfName, nIFFlags                  ) == 0 );
 
     }
 
@@ -327,9 +354,6 @@ int  CTCI_Init( DEVBLK* pDEVBLK, int argc, char *argv[] )
 
     pDevCTCBLK->pDEVBLK[0]->tid = pDevCTCBLK->tid;
     pDevCTCBLK->pDEVBLK[1]->tid = pDevCTCBLK->tid;
-
-    free( pWrkCTCBLK );
-    pWrkCTCBLK = NULL;
 
     return 0;
 }
@@ -622,7 +646,7 @@ void  CTCI_Query( DEVBLK* pDEVBLK, char** ppszClass,
         snprintf( pBuffer, iBufLen-1, "CTCI %s/%s (%s)%s IO[%" I64_FMT "u]",
                   pCTCBLK->szGuestIPAddr,
                   pCTCBLK->szDriveIPAddr,
-                  pCTCBLK->szTUNDevName,
+                  pCTCBLK->szTUNIfName,
                   pCTCBLK->fDebug ? " -d" : "",
                   pDEVBLK->excps );
         pBuffer[iBufLen-1] = '\0';
@@ -912,7 +936,7 @@ void  CTCI_Write( DEVBLK* pDEVBLK,   U16   sCount,
         if( pCTCBLK->fDebug )
         {
             // "%1d:%04X CTC: sending packet to device '%s'"
-            WRMSG(HHC00910, "I", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNDevName );
+            WRMSG(HHC00910, "I", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNIfName );
             packet_trace( pSegment->bData, sDataLen, '<' );
         }
 
@@ -922,7 +946,7 @@ void  CTCI_Write( DEVBLK* pDEVBLK,   U16   sCount,
         if( rc < 0 )
         {
             // "%1d:%04X CTC: error writing to device '%s': '%s'"
-            WRMSG(HHC00911, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNDevName,
+            WRMSG(HHC00911, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNIfName,
                     strerror( errno ) );
 
             pDEVBLK->sense[0] = SENSE_EC;
@@ -1003,7 +1027,7 @@ static void*  CTCI_ReadThread( PCTCBLK pCTCBLK )
             if( !pCTCBLK->fCloseInProgress )
             {
                 // "%1d:%04X CTC: error reading from device '%s': '%s'"
-                WRMSG(HHC00912, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNDevName,
+                WRMSG(HHC00912, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, pCTCBLK->szTUNIfName,
                     strerror( errno ) );
             }
             break;
@@ -1015,7 +1039,7 @@ static void*  CTCI_ReadThread( PCTCBLK pCTCBLK )
         if( pCTCBLK->fDebug )
         {
             // "%1d:%04X CTC: received %d bytes size packet from device '%s'"
-            WRMSG(HHC00913, "I", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, iLength, pCTCBLK->szTUNDevName );
+            WRMSG(HHC00913, "I", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum, iLength, pCTCBLK->szTUNIfName );
             packet_trace( szBuff, iLength, '>' );
         }
 
@@ -1139,6 +1163,8 @@ static int  CTCI_EnqueueIPFrame( DEVBLK* pDEVBLK,
 static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
                        int argc, char** argx )
 {
+    int             saw_if = 0;       /* -if specified               */
+    int             saw_conf = 0; /* Other configuration flags present */
     struct in_addr  addr;               // Work area for addresses
     int             iMTU;
     int             i;
@@ -1162,10 +1188,10 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
     strlcpy( pCTCBLK->szMTU,     "1500",            sizeof(pCTCBLK->szMTU) );
     strlcpy( pCTCBLK->szNetMask, "255.255.255.255", sizeof(pCTCBLK->szNetMask) );
 #if defined( OPTION_W32_CTCI )
-    strlcpy( pCTCBLK->szTUNCharName,  tt32_get_default_iface(),
-             sizeof(pCTCBLK->szTUNCharName) );
+    strlcpy( pCTCBLK->szTUNCharDevName,  tt32_get_default_iface(),
+             sizeof(pCTCBLK->szTUNCharDevName) );
 #else
-    strlcpy( pCTCBLK->szTUNCharName,  HERCTUN_DEV, sizeof(pCTCBLK->szTUNCharName) );
+    strlcpy( pCTCBLK->szTUNCharDevName,  HERCTUN_DEV, sizeof(pCTCBLK->szTUNCharDevName) );
 #endif
 
 #if defined( OPTION_W32_CTCI )
@@ -1233,6 +1259,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
         {
             { "dev",     required_argument, NULL, 'n' },
             { "tundev",  required_argument, NULL, 'x' },
+            { "if",      required_argument, NULL, 'x' },
 #if defined( OPTION_W32_CTCI )
             { "kbuff",   required_argument, NULL, 'k' },
             { "ibuff",   required_argument, NULL, 'i' },
@@ -1254,7 +1281,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
 
         switch( c )
         {
-        case 'n':     // Network Device
+        case 'n':     // Network Device (special character device)
 #if defined( OPTION_W32_CTCI )
             // This could be the IP or MAC address of the
             // host ethernet adapter.
@@ -1271,25 +1298,26 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
             }
 #endif // defined( OPTION_W32_CTCI )
             // This is the file name of the special TUN/TAP character device
-            if( strlen( optarg ) > sizeof( pCTCBLK->szTUNCharName ) - 1 )
+            if( strlen( optarg ) > sizeof( pCTCBLK->szTUNCharDevName ) - 1 )
             {
                 // "%1d:%04X CTC: option '%s' value '%s' invalid"
                 WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
                       "device name", optarg );
                 return -1;
             }
-            strlcpy( pCTCBLK->szTUNCharName, optarg, sizeof(pCTCBLK->szTUNCharName) );
+            strlcpy( pCTCBLK->szTUNCharDevName, optarg, sizeof(pCTCBLK->szTUNCharDevName) );
             break;
 
-        case 'x':     // TUN network device name
-            if( strlen( optarg ) > sizeof(pCTCBLK->szTUNDevName)-1 )
+        case 'x':     // TUN network interface name
+            if( strlen( optarg ) > sizeof(pCTCBLK->szTUNIfName)-1 )
             {
                 // HHC00916 "%1d:%04X CTC: option '%s' value '%s' invalid"
                 WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
                       "TUN device name", optarg );
                 return -1;
             }
-            strlcpy( pCTCBLK->szTUNDevName, optarg, sizeof(pCTCBLK->szTUNDevName) );
+            strlcpy( pCTCBLK->szTUNIfName, optarg, sizeof(pCTCBLK->szTUNIfName) );
+            saw_if = 1;
             break;
 
 #if defined( OPTION_W32_CTCI )
@@ -1336,6 +1364,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
             }
 
             strlcpy( pCTCBLK->szMTU, optarg, sizeof(pCTCBLK->szMTU) );
+            saw_conf = 1;
             break;
 
         case 's':     // Netmask of point-to-point link
@@ -1348,6 +1377,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
             }
 
             strlcpy( pCTCBLK->szNetMask, optarg, sizeof(pCTCBLK->szNetMask) );
+            saw_conf = 1;
             break;
 
         case 'm':
@@ -1360,6 +1390,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
             }
 
             strlcpy( pCTCBLK->szMACAddress, optarg, sizeof(pCTCBLK->szMACAddress) );
+            saw_conf = 1;
 
             break;
 
@@ -1379,7 +1410,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
     i = 0;
 
     // Check for correct number of arguments
-    if( argc == 0 )
+    if( argc == 0 && !saw_if)
     {
         // "%1d:%04X CTC: incorrect number of parameters"
         WRMSG(HHC00915, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum );
@@ -1388,9 +1419,11 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
 
     if( !pCTCBLK->fOldFormat )
     {
-        if (1 == argc)                /* Pre-configured net device   */
+        if (!argc && saw_if && !saw_conf)
+            pCTCBLK->fPreconfigured = TRUE;
+        else if (1 == argc && !saw_if && !saw_conf) /* Pre-configured net device */
         {
-            strlcpy(pCTCBLK->szTUNDevName, argv[0], sizeof(pCTCBLK->szTUNDevName));
+            strlcpy(pCTCBLK->szTUNIfName, argv[0], sizeof(pCTCBLK->szTUNIfName));
             pCTCBLK->fPreconfigured = TRUE;
             argc--; argv++;
         }
@@ -1445,7 +1478,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
 
         // TUN/TAP Device
         if( **argv != '/' ||
-            strlen( *argv ) > sizeof( pCTCBLK->szTUNCharName ) - 1 )
+            strlen( *argv ) > sizeof( pCTCBLK->szTUNCharDevName ) - 1 )
         {
             // "%1d:%04X CTC: option '%s' value '%s' invalid"
             WRMSG(HHC00916, "E", SSID_TO_LCSS(pDEVBLK->ssid), pDEVBLK->devnum,
@@ -1453,7 +1486,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
             return -1;
         }
 
-        strlcpy( pCTCBLK->szTUNCharName, *argv, sizeof(pCTCBLK->szTUNCharName) );
+        strlcpy( pCTCBLK->szTUNCharDevName, *argv, sizeof(pCTCBLK->szTUNCharDevName) );
 
         argc--; argv++;
 
@@ -1553,7 +1586,7 @@ static int  ParseArgs( DEVBLK* pDEVBLK, PCTCBLK pCTCBLK,
                     }
                 }
 
-                strlcpy( pCTCBLK->szTUNCharName, *argv, sizeof(pCTCBLK->szTUNCharName) );
+                strlcpy( pCTCBLK->szTUNCharDevName, *argv, sizeof(pCTCBLK->szTUNCharDevName) );
 
                 // Kludge: This may look strange at first, but with
                 // TunTap32, only the last 3 bytes of the "driver IP

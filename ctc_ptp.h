@@ -110,8 +110,8 @@ struct  _PTPBLK
     int         iKernBuff;                 // Kernel buffer in K bytes.
     int         iIOBuff;                   // I/O buffer in K bytes.
     int         iAFamily;                  // Address family
-    char        szTUNCharName[256];        // TUN/TAP char filename
-    char        szTUNDevName[IFNAMSIZ];    // Network Device Name
+    char        szTUNCharDevName[256];     // TUN/TAP char device filename (e.g. /dev/net/tun)
+    char        szTUNIfName[IFNAMSIZ];     // TUN/TAP network interface name (e.g. tun0)
     char        szMaxBfru[8];              // Maximum buffers to use
     char        szMTU[8];                  // MTU size
     char        szMACAddress[32];          // MAC Address
@@ -119,6 +119,7 @@ struct  _PTPBLK
     char        szGuestIPAddr4[20];        // IPv4 Address (Guest)
     char        szGuestPfxSiz4[8];         // IPv4 Prefix Size (Guest)
     char        szNetMask[20];             // IPv4 Netmask
+#if defined(ENABLE_IPV6)
     char        szDriveIPAddr6[48];        // IPv6 Address (Driver)
     char        szDrivePfxSiz6[8];         // IPv6 Prefix Size (Driver)
     char        szGuestIPAddr6[48];        // IPv6 Address (Guest)
@@ -127,6 +128,7 @@ struct  _PTPBLK
     char        szDriveLLxSiz6[8];         // IPv6 Link Local Prefix Size (Driver)
     char        szGuestLLAddr6[48];        // IPv6 Link Local Address (Guest)
     char        szGuestLLxSiz6[8];         // IPv6 Link Local Prefix Size (Guest)
+#endif /* defined(ENABLE_IPV6) */
 
     int         iMaxBfru;                  // Maximum buffers to use
     int         iMTU;                      // MTU size
