@@ -56,7 +56,7 @@ static void tuntap_term(void)
 // Primary Module Entry Points
 // ====================================================================
 
-static int TUNTAP_SetMode (int fd, struct hifr *hifr)
+static int TUNTAP_SetMode (int fd, struct hifr *hifr, int iFlags)
 {
     int rc;
 
@@ -65,11 +65,11 @@ static int TUNTAP_SetMode (int fd, struct hifr *hifr)
 
 #if !defined(OPTION_W32_CTCI)
     /* If invalid value, try with the pre-2.4.5 value */
-    if (rc != 0 && errno == EINVAL)
+    if (0 > rc && errno == EINVAL)
         rc = TUNTAP_IOCtl (fd, ('T' << 8) | 202, (char *) hifr);
 
     /* kludge for EPERM and linux 2.6.18 */
-    if (rc != 0 && errno == EPERM)
+    if (0 > rc && errno == EPERM && !(IFF_NO_HERCIFC & iFlags))
     {
         int             ifd[2];
         char           *hercifc;
@@ -116,7 +116,7 @@ static int TUNTAP_SetMode (int fd, struct hifr *hifr)
         FD_SET (ifd[1], &selset);
         tv.tv_sec = 5;
         tv.tv_usec = 0;
-        rc = select (ifd[1]+1, &selset, NULL, NULL, &tv);
+        rc = select (1, &selset, NULL, NULL, &tv);
         if (rc > 0)
         {
             rc = read (ifd[1], &ctlreq, CTLREQ_SIZE);
@@ -133,7 +133,7 @@ static int TUNTAP_SetMode (int fd, struct hifr *hifr)
         /* clean-up */
         sv_err = errno;
         close (ifd[1]);
-        kill (pid, SIGINT);
+        kill (pid, SIGKILL);
         waitpid (pid, &status, 0);
         errno = sv_err;
     }
@@ -234,13 +234,16 @@ int             TUNTAP_CreateInterface( char* pszTUNDevice,
         struct hifr hifr;
 
         memset( &hifr, 0, sizeof( hifr ) );
-        hifr.hifr_flags = iFlags & ~(iFlags & IFF_OSOCK);
+        hifr.hifr_flags = iFlags & ~(iFlags & IFF_OSOCK) & 0xffff;
         if(*pszNetDevName)
             strcpy( hifr.hifr_name, pszNetDevName );
 
-        if( TUNTAP_SetMode (fd, &hifr) < 0 )
+        if( TUNTAP_SetMode (fd, &hifr, iFlags) < 0 )
         {
-            WRMSG(HHC00138, "E", pszTUNDevice, strerror( errno ) );
+            logmsg("nohif %x\n", IFF_NO_HERCIFC & iFlags);
+            if (EPERM == errno && (IFF_NO_HERCIFC & iFlags))
+                WRMSG(HHC00154, "E", hifr.hifr_name);
+            else WRMSG(HHC00138, "E", hifr.hifr_name, strerror( errno ) );
             return -1;
         }
 
